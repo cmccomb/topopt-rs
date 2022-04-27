@@ -33,7 +33,7 @@ pub fn top(nelx: usize, nely: usize, volfrac: f32, penalty: f32, rmin: f32) -> D
                     2 * n1 + 1,
                     2 * n1 + 2,
                 ];
-                let Ue: DVector<f32> = DVector::from_fn(8, |idx, jdx| U[Ueidx[idx] - 1]);
+                let Ue: DVector<f32> = DVector::from_fn(8, |idx, _jdx| U[Ueidx[idx] - 1]);
                 let UKEU = (Ue.transpose() * lk() * Ue)[(0, 0)];
                 c += x[(ely - 1, elx - 1)].powf(penalty) * UKEU;
                 dc[(ely - 1, elx - 1)] =
