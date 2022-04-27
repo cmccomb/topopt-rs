@@ -8,10 +8,11 @@ use nalgebra::{DMatrix, DVector};
 mod utils;
 use utils::{max, min, mult, tmax, tmin};
 
-/// The topology optimization function. It takes inputs for the number of elements in the x
-/// direction (`nelx`), the number of elements in the y direction (`nely`), the volume fraction
+/// The topology optimization function. It takes inputs for the number of elements in the *x*
+/// direction (`nelx`), the number of elements in the *y* direction (`nely`), the volume fraction
 /// of material to be optimized (`volfrac`), the penalty weighting (`penalty`), and filter
-/// radius (`rmin`).
+/// radius (`rmin`). It returns a matrix containing the optimized volume of material contained in each
+/// cell.
 /// ```
 ///  let x = topopt::top(30, 10, 0.5, 3.0, 1.5);
 /// ```
@@ -23,20 +24,6 @@ pub fn top(nelx: usize, nely: usize, volfrac: f32, penalty: f32, rmin: f32) -> D
     let mut iter: usize = 0;
     let mut change: f32 = 1.0;
     let mut vol: f32 = 0.0;
-    // START ITERATION
-    print!("{esc}c", esc = 27 as char);
-    println!("Iter: 0000\tObj: NaN\tVol: 0.5\tΔ: NaN");
-    // Print
-    for ey in 0..nely {
-        for ex in 0..nelx {
-            if x[(ey, ex)] > 0.5 {
-                print!("██");
-            } else {
-                print!("  ");
-            }
-        }
-        print!("\n");
-    }
     while change > 0.01 {
         iter += 1;
         xold = x.clone();
@@ -75,12 +62,16 @@ pub fn top(nelx: usize, nely: usize, volfrac: f32, penalty: f32, rmin: f32) -> D
         vol = x.sum() / ((nelx * nely) as f32);
 
         print!("{esc}c", esc = 27 as char);
-        println!("Iter: {iter:04}\tObj: {c}\tVol: {vol}\tΔ: {change}");
+        println!("Iter: {iter:04}\tObj: {c:4.3}\tVol: {vol:1.3}\tΔ: {change:1.3}");
         // Print
         for ey in 0..nely {
             for ex in 0..nelx {
-                if x[(ey, ex)] > 0.5 {
+                if x[(ey, ex)] > 0.75 {
                     print!("██");
+                } else if x[(ey, ex)] > 0.5 {
+                    print!("▒▒");
+                } else if x[(ey, ex)] >= 0.25 {
+                    print!("░░");
                 } else {
                     print!("  ");
                 }
