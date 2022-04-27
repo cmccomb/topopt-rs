@@ -6,8 +6,7 @@
 
 use nalgebra::{DMatrix, DVector};
 mod utils;
-use crate::utils::nancount;
-use utils::{max, min, mult, tmax, tmin};
+use utils::{max, min};
 
 /// The topology optimization function. It takes inputs for the number of elements in the *x*
 /// direction (`nelx`), the number of elements in the *y* direction (`nely`), the volume fraction
@@ -29,7 +28,7 @@ pub fn top(nelx: usize, nely: usize, volfrac: f64, penalty: f64, rmin: f64) -> D
         iter += 1;
         xold = x.clone();
         // FE-ANALYSIS
-        let U = FE(nelx, nely, x.clone(), penalty);
+        let U = FE(nelx, nely, &x, penalty);
 
         let mut c = 0.0;
         for ely in 1..=nely {
@@ -55,14 +54,14 @@ pub fn top(nelx: usize, nely: usize, volfrac: f64, penalty: f64, rmin: f64) -> D
         }
 
         // FILTERING OF SENSITIVITIES
-        dc = check(nelx, nely, rmin, x.clone(), dc.clone());
+        dc = check(nelx, nely, rmin, &x, &dc);
 
         // % DESIGN UPDATE BY THE OPTIMALITY CRITERIA METHOD
 
-        x = optimality_criteria_update(nelx, nely, x.clone(), volfrac, dc.clone());
+        x = optimality_criteria_update(nelx, nely, &x, volfrac, &dc);
 
         // % PRINT RESULTS
-        change = (x.clone() - xold).abs().max();
+        change = (&x - xold).abs().max();
         vol = x.sum() / ((nelx * nely) as f64);
 
         print!("{esc}c", esc = 27 as char);
@@ -111,27 +110,26 @@ mod top_tests {
 pub(crate) fn optimality_criteria_update(
     nelx: usize,
     nely: usize,
-    x: DMatrix<f64>,
+    x: &DMatrix<f64>,
     volfrac: f64,
-    dc: DMatrix<f64>,
+    dc: &DMatrix<f64>,
 ) -> DMatrix<f64> {
     let mut l1: f64 = 0.0;
     let mut l2: f64 = 100_000.0;
     let delta: f64 = 0.2;
-    let mut xnew = x.clone();
+    let mut xnew: DMatrix<f64> = DMatrix::from_element(nelx, nely, 0.0);
     while l2 - l1 > 1e-4 {
         let lmid = 0.5 * (l2 + l1);
-        let dc_transform: DMatrix<f64> = dc.scale(-1.0 / lmid).map(|x| x.sqrt());
-        xnew = max(
-            DMatrix::from_element(nely, nelx, 0.001),
+        xnew = x.zip_map(dc, |xel, dcel| {
             max(
-                x.add_scalar(-delta),
-                min(
-                    DMatrix::from_element(nely, nelx, 1.0),
-                    min(x.add_scalar(delta), mult(x.clone(), dc_transform)),
+                0.001,
+                max(
+                    xel - delta,
+                    min(1.0, min(xel + delta, xel * (-dcel / lmid).sqrt())),
                 ),
-            ),
-        );
+            )
+        });
+
         if xnew.sum() - volfrac * (nelx as f64) * (nely as f64) > 0.0 {
             l1 = lmid;
         } else {
@@ -150,9 +148,9 @@ mod oc_tests {
         let oc = crate::optimality_criteria_update(
             3,
             3,
-            DMatrix::from_element(3, 3, 1.0),
+            &DMatrix::from_element(3, 3, 1.0),
             0.5,
-            -DMatrix::from_element(3, 3, 0.1),
+            &-DMatrix::from_element(3, 3, 0.1),
         );
         assert!((oc - DMatrix::from_element(3, 3, 0.8)).max() < 0.001)
     }
@@ -163,26 +161,25 @@ pub(crate) fn check(
     nelx: usize,
     nely: usize,
     rmin: f64,
-    x: DMatrix<f64>,
-    dc: DMatrix<f64>,
+    x: &DMatrix<f64>,
+    dc: &DMatrix<f64>,
 ) -> DMatrix<f64> {
     let mut dcn: DMatrix<f64> = DMatrix::from_element(nely, nelx, 0.0);
     for idx in 1..=nelx {
         for jdx in 1..=nely {
             let mut sum = 0.0;
-            for kdx in
-                tmax(idx - rmin.floor() as usize, 1)..=tmin(idx + rmin.floor() as usize, nelx)
+            for kdx in max(idx - rmin.floor() as usize, 1)..=min(idx + rmin.floor() as usize, nelx)
             {
                 for ldx in
-                    tmax(jdx - rmin.floor() as usize, 1)..=tmin(jdx + rmin.floor() as usize, nely)
+                    max(jdx - rmin.floor() as usize, 1)..=min(jdx + rmin.floor() as usize, nely)
                 {
                     let fac = rmin
                         - (((idx as i32 - kdx as i32).pow(2) + (jdx as i32 - ldx as i32).pow(2))
                             as f64)
                             .sqrt();
-                    sum += tmax(0.0, fac as f64);
+                    sum += max(0.0, fac as f64);
                     dcn[(jdx - 1, idx - 1)] +=
-                        tmax(0.0, fac as f64) * x[(ldx - 1, kdx - 1)] * dc[(ldx - 1, kdx - 1)];
+                        max(0.0, fac as f64) * x[(ldx - 1, kdx - 1)] * dc[(ldx - 1, kdx - 1)];
                 }
             }
             dcn[(jdx - 1, idx - 1)] /= x[(jdx - 1, idx - 1)] * sum;
@@ -202,8 +199,8 @@ mod check_tests {
                 3,
                 3,
                 1.5,
-                DMatrix::from_element(3, 3, 1.0),
-                DMatrix::from_element(3, 3, 0.1)
+                &DMatrix::from_element(3, 3, 1.0),
+                &DMatrix::from_element(3, 3, 0.1)
             ) - DMatrix::from_element(3, 3, 0.1))
             .max()
                 < 0.001
@@ -217,8 +214,8 @@ mod check_tests {
                 2,
                 2,
                 1.5,
-                DMatrix::from_element(2, 2, 0.5),
-                DMatrix::from_fn(2, 2, |idx, jdx| {
+                &DMatrix::from_element(2, 2, 0.5),
+                &DMatrix::from_fn(2, 2, |idx, jdx| {
                     let x = [[-165.5927, -25.7591], [-88.0966, -132.6057]];
                     x[idx][jdx]
                 }),
@@ -234,7 +231,7 @@ mod check_tests {
 }
 
 /// FE Analysis
-pub(crate) fn FE(nelx: usize, nely: usize, x: DMatrix<f64>, penalty: f64) -> DVector<f64> {
+pub(crate) fn FE(nelx: usize, nely: usize, x: &DMatrix<f64>, penalty: f64) -> DVector<f64> {
     let KE = lk();
     let mut K: DMatrix<f64> = DMatrix::from_element(
         2 * (nelx + 1) * (nely + 1),
@@ -264,7 +261,6 @@ pub(crate) fn FE(nelx: usize, nely: usize, x: DMatrix<f64>, penalty: f64) -> DVe
         }
     }
     // DEFINE LOADS AND SUPPORTS (HALF MBB-BEAM)
-    // This is not in keeping with tradition at all
     F[1] = -1.0;
     let mut fixeddofs: Vec<usize> = (1..(2 * (nely + 1))).step_by(2).collect();
     fixeddofs.push(2 * (nelx + 1) * (nely + 1));
@@ -295,7 +291,7 @@ mod fe_tests {
         ]);
 
         assert!(
-            (crate::FE(1, 1, DMatrix::from_element(1, 1, 1.0), 10.0) - u_from_matlab)
+            (crate::FE(1, 1, &DMatrix::from_element(1, 1, 1.0), 10.0) - u_from_matlab)
                 .abs()
                 .max()
                 < 0.001
