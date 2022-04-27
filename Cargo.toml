@@ -9,7 +9,7 @@ repository = "https://github.com/cmccomb/topopt-rs"
 homepage = "https://github.com/cmccomb/topopt-rs"
 documentation = "https://docs.rs/topopt-rs"
 license = "MIT"
-keywords = ["topology-optimization", "engineering"]
-categories = ["mathematics", "science", "simulation"]
+keywords = ["topology-optimization", "engineering", "design"]
+categories = ["science", "simulation", "aerospace::simulation"]
 [dependencies]
 nalgebra = "0.30.1"

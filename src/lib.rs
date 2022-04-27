@@ -8,6 +8,10 @@ use nalgebra::{DMatrix, DVector};
 mod utils;
 use utils::{max, min, mult, tmax, tmin};
 
+/// The topology optimization function. It takes inputs for the number of elements in the x
+/// direction (`nelx`), the number of elements in the y direction (`nely`), the volume fraction
+/// of material to be optimized (`volfrac`), the penalty weighting (`penalty`), and filter
+/// radius (`rmin`).
 /// ```
 ///  let x = topopt::top(30, 10, 0.5, 3.0, 1.5);
 /// ```
@@ -62,7 +66,7 @@ pub fn top(nelx: usize, nely: usize, volfrac: f32, penalty: f32, rmin: f32) -> D
 
 #[cfg(test)]
 mod top_tests {
-    use nalgebra::{DMatrix, DVector};
+    use nalgebra::DMatrix;
 
     #[test]
     fn test_top() {
