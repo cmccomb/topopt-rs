@@ -22,7 +22,21 @@ pub fn top(nelx: usize, nely: usize, volfrac: f32, penalty: f32, rmin: f32) -> D
     let mut dc: DMatrix<f32> = DMatrix::from_element(nely, nelx, 1.0);
     let mut iter: usize = 0;
     let mut change: f32 = 1.0;
+    let mut vol: f32 = 0.0;
     // START ITERATION
+    print!("{esc}c", esc = 27 as char);
+    println!("Iter: 0000\tObj: NaN\tVol: 0.5\tΔ: NaN");
+    // Print
+    for ey in 0..nely {
+        for ex in 0..nelx {
+            if x[(ey, ex)] > 0.5 {
+                print!("██");
+            } else {
+                print!("  ");
+            }
+        }
+        print!("\n");
+    }
     while change > 0.01 {
         iter += 1;
         xold = x.clone();
@@ -58,8 +72,21 @@ pub fn top(nelx: usize, nely: usize, volfrac: f32, penalty: f32, rmin: f32) -> D
         x = optimality_criteria_update(nelx, nely, x.clone(), volfrac, dc.clone());
         // % PRINT RESULTS
         change = (x.clone() - xold).abs().max();
-        let vol = x.sum() / ((nelx * nely) as f32);
-        println!("It.: {iter} Obj.: {c} Vol.: {vol} ch.: {change}");
+        vol = x.sum() / ((nelx * nely) as f32);
+
+        print!("{esc}c", esc = 27 as char);
+        println!("Iter: {iter:04}\tObj: {c}\tVol: {vol}\tΔ: {change}");
+        // Print
+        for ey in 0..nely {
+            for ex in 0..nelx {
+                if x[(ey, ex)] > 0.5 {
+                    print!("██");
+                } else {
+                    print!("  ");
+                }
+            }
+            print!("\n");
+        }
     }
     x
 }
