@@ -8,13 +8,13 @@ This package performs 2-dimensional topology optimization and is a port of ["A 9
 # Usage
 Usage follows exactly the same format as the original topology optimization code:
 ```rust
-let nelx = 30;
+let nelx = 60;
 let nely = 10;
 let volfrac = 0.5;
 let penalty = 3.0;
 let rmin = 1.5;
 let x = topopt::top(nelx, nely, volfrac, penalty, rmin);
 ```
-While will display the progress of the algorithm and a visualization of the optimized structure in the command line
+This will display the progress of the algorithm and a visualization of the optimized structure in the command line
 
 ![](https://raw.githubusercontent.com/cmccomb/topopt-rs/master/mbb.gif)

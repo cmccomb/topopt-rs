@@ -1,9 +1,9 @@
 [package]
 name = "topopt"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Chris McComb <ccmcc2012@gmail.com>"]
-description = "Topology optimization, based on TopOpt99"
+description = "Topology optimization in pure Rust, based on 99 lines of MATLAB"
 readme = "README.md"
 repository = "https://github.com/cmccomb/topopt-rs"
 homepage = "https://github.com/cmccomb/topopt-rs"
