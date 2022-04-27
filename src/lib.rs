@@ -1,5 +1,3 @@
-// https://www.topopt.mek.dtu.dk/Apps-and-software/A-99-line-topology-optimization-code-written-in-MATLAB
-
 use nalgebra::{DMatrix, DVector};
 mod utils;
 use utils::{max, min, mult, tmax, tmin};
@@ -47,7 +45,7 @@ pub fn top(nelx: usize, nely: usize, volfrac: f32, penalty: f32, rmin: f32) -> D
         dc = check(nelx, nely, rmin, x.clone(), dc.clone());
 
         // % DESIGN UPDATE BY THE OPTIMALITY CRITERIA METHOD
-        x = OC(nelx, nely, x.clone(), volfrac, dc.clone());
+        x = optimality_criteria_update(nelx, nely, x.clone(), volfrac, dc.clone());
         // % PRINT RESULTS
         change = (x.clone() - xold).abs().max();
         let vol = x.sum() / ((nelx * nely) as f32);
@@ -76,7 +74,7 @@ mod top_tests {
 }
 
 /// Optimality criteria update
-pub(crate) fn OC(
+pub(crate) fn optimality_criteria_update(
     nelx: usize,
     nely: usize,
     x: DMatrix<f32>,
@@ -111,11 +109,11 @@ pub(crate) fn OC(
 
 #[cfg(test)]
 mod oc_tests {
-    use nalgebra::{DMatrix, DVector};
+    use nalgebra::DMatrix;
 
     #[test]
     fn test_oc() {
-        let oc = crate::OC(
+        let oc = crate::optimality_criteria_update(
             3,
             3,
             DMatrix::from_element(3, 3, 1.0),
@@ -161,7 +159,7 @@ pub(crate) fn check(
 
 #[cfg(test)]
 mod check_tests {
-    use nalgebra::{DMatrix, DVector};
+    use nalgebra::DMatrix;
 
     #[test]
     fn test_check() {

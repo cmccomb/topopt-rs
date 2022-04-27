@@ -1,5 +1,4 @@
 use nalgebra::DMatrix;
-use std::ops::Neg;
 
 /// Elementwise multiplication
 pub(crate) fn mult(x: DMatrix<f32>, y: DMatrix<f32>) -> DMatrix<f32> {

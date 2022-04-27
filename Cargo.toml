@@ -2,5 +2,14 @@
 name = "topopt"
 version = "0.1.0"
 edition = "2021"
+authors = ["Chris McComb <ccmcc2012@gmail.com>"]
+description = "Topology optimization, based on TopOpt99"
+readme = "README.md"
+repository = "https://github.com/cmccomb/topopt-rs"
+homepage = "https://github.com/cmccomb/topopt-rs"
+documentation = "https://docs.rs/topopt-rs"
+license = "MIT"
+keywords = ["topology-optimization", "engineering"]
+categories = ["mathematics", "science", "simulation"]
 [dependencies]
 nalgebra = "0.30.1"
