@@ -15,3 +15,6 @@ let penalty = 3.0;
 let rmin = 1.5;
 let x = topopt::top(nelx, nely, volfrac, penalty, rmin);
 ```
+While will display this in the command line:
+
+![](https://raw.githubusercontent.com/cmccomb/topopt-rs/master/mbb.gif)
