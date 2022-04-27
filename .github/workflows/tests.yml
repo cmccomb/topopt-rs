@@ -1,10 +1,10 @@
-name: tests
+name: test
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - name: Build
-        run: cargo build --verbose --release
-      - name: Run tests
-        run: cargo test --verbose --release
+    - uses: actions/checkout@v3
+    - name: Build
+      run: cargo build --verbose --release
+    - name: Run tests
+      run: cargo test --verbose --release
