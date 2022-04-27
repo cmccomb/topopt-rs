@@ -6,6 +6,7 @@
 
 use nalgebra::{DMatrix, DVector};
 mod utils;
+use crate::utils::nancount;
 use utils::{max, min, mult, tmax, tmin};
 
 /// The topology optimization function. It takes inputs for the number of elements in the *x*
@@ -16,19 +17,20 @@ use utils::{max, min, mult, tmax, tmin};
 /// ```
 ///  let x = topopt::top(30, 10, 0.5, 3.0, 1.5);
 /// ```
-pub fn top(nelx: usize, nely: usize, volfrac: f32, penalty: f32, rmin: f32) -> DMatrix<f32> {
+pub fn top(nelx: usize, nely: usize, volfrac: f64, penalty: f64, rmin: f64) -> DMatrix<f64> {
     // INITIALIZE
-    let mut x: DMatrix<f32> = DMatrix::from_element(nely, nelx, volfrac);
-    let mut xold: DMatrix<f32> = DMatrix::from_element(nely, nelx, volfrac);
-    let mut dc: DMatrix<f32> = DMatrix::from_element(nely, nelx, 1.0);
+    let mut x: DMatrix<f64> = DMatrix::from_element(nely, nelx, volfrac);
+    let mut xold: DMatrix<f64> = DMatrix::from_element(nely, nelx, volfrac);
+    let mut dc: DMatrix<f64> = DMatrix::from_element(nely, nelx, 1.0);
     let mut iter: usize = 0;
-    let mut change: f32 = 1.0;
-    let mut vol: f32 = 0.0;
+    let mut change: f64 = 1.0;
+    let mut vol: f64 = 0.0;
     while change > 0.01 {
         iter += 1;
         xold = x.clone();
         // FE-ANALYSIS
         let U = FE(nelx, nely, x.clone(), penalty);
+
         let mut c = 0.0;
         for ely in 1..=nely {
             for elx in 1..=nelx {
@@ -44,7 +46,7 @@ pub fn top(nelx: usize, nely: usize, volfrac: f32, penalty: f32, rmin: f32) -> D
                     2 * n1 + 1,
                     2 * n1 + 2,
                 ];
-                let Ue: DVector<f32> = DVector::from_fn(8, |idx, _jdx| U[Ueidx[idx] - 1]);
+                let Ue: DVector<f64> = DVector::from_fn(8, |idx, _jdx| U[Ueidx[idx] - 1]);
                 let UKEU = (Ue.transpose() * lk() * Ue)[(0, 0)];
                 c += x[(ely - 1, elx - 1)].powf(penalty) * UKEU;
                 dc[(ely - 1, elx - 1)] =
@@ -56,10 +58,12 @@ pub fn top(nelx: usize, nely: usize, volfrac: f32, penalty: f32, rmin: f32) -> D
         dc = check(nelx, nely, rmin, x.clone(), dc.clone());
 
         // % DESIGN UPDATE BY THE OPTIMALITY CRITERIA METHOD
+
         x = optimality_criteria_update(nelx, nely, x.clone(), volfrac, dc.clone());
+
         // % PRINT RESULTS
         change = (x.clone() - xold).abs().max();
-        vol = x.sum() / ((nelx * nely) as f32);
+        vol = x.sum() / ((nelx * nely) as f64);
 
         print!("{esc}c", esc = 27 as char);
         println!("Iter: {iter:04}\tObj: {c:4.3}\tVol: {vol:1.3}\tΔ: {change:1.3}");
@@ -72,6 +76,8 @@ pub fn top(nelx: usize, nely: usize, volfrac: f32, penalty: f32, rmin: f32) -> D
                     print!("▒▒");
                 } else if x[(ey, ex)] >= 0.25 {
                     print!("░░");
+                } else if x[(ey, ex)].is_nan() {
+                    print!("OO");
                 } else {
                     print!("  ");
                 }
@@ -105,17 +111,17 @@ mod top_tests {
 pub(crate) fn optimality_criteria_update(
     nelx: usize,
     nely: usize,
-    x: DMatrix<f32>,
-    volfrac: f32,
-    dc: DMatrix<f32>,
-) -> DMatrix<f32> {
-    let mut l1: f32 = 0.0;
-    let mut l2: f32 = 100_000.0;
-    let delta: f32 = 0.2;
+    x: DMatrix<f64>,
+    volfrac: f64,
+    dc: DMatrix<f64>,
+) -> DMatrix<f64> {
+    let mut l1: f64 = 0.0;
+    let mut l2: f64 = 100_000.0;
+    let delta: f64 = 0.2;
     let mut xnew = x.clone();
     while l2 - l1 > 1e-4 {
         let lmid = 0.5 * (l2 + l1);
-        let dc_transform: DMatrix<f32> = dc.scale(-1.0 / lmid).map(|x| x.sqrt());
+        let dc_transform: DMatrix<f64> = dc.scale(-1.0 / lmid).map(|x| x.sqrt());
         xnew = max(
             DMatrix::from_element(nely, nelx, 0.001),
             max(
@@ -126,7 +132,7 @@ pub(crate) fn optimality_criteria_update(
                 ),
             ),
         );
-        if xnew.sum() - volfrac * (nelx as f32) * (nely as f32) > 0.0 {
+        if xnew.sum() - volfrac * (nelx as f64) * (nely as f64) > 0.0 {
             l1 = lmid;
         } else {
             l2 = lmid;
@@ -156,11 +162,11 @@ mod oc_tests {
 pub(crate) fn check(
     nelx: usize,
     nely: usize,
-    rmin: f32,
-    x: DMatrix<f32>,
-    dc: DMatrix<f32>,
-) -> DMatrix<f32> {
-    let mut dcn: DMatrix<f32> = DMatrix::from_element(nely, nelx, 0.0);
+    rmin: f64,
+    x: DMatrix<f64>,
+    dc: DMatrix<f64>,
+) -> DMatrix<f64> {
+    let mut dcn: DMatrix<f64> = DMatrix::from_element(nely, nelx, 0.0);
     for idx in 1..=nelx {
         for jdx in 1..=nely {
             let mut sum = 0.0;
@@ -172,11 +178,11 @@ pub(crate) fn check(
                 {
                     let fac = rmin
                         - (((idx as i32 - kdx as i32).pow(2) + (jdx as i32 - ldx as i32).pow(2))
-                            as f32)
+                            as f64)
                             .sqrt();
-                    sum = sum + tmax(0.0, fac as f32);
+                    sum += tmax(0.0, fac as f64);
                     dcn[(jdx - 1, idx - 1)] +=
-                        tmax(0.0, fac as f32) * x[(ldx - 1, kdx - 1)] * dc[(ldx - 1, kdx - 1)];
+                        tmax(0.0, fac as f64) * x[(ldx - 1, kdx - 1)] * dc[(ldx - 1, kdx - 1)];
                 }
             }
             dcn[(jdx - 1, idx - 1)] /= x[(jdx - 1, idx - 1)] * sum;
@@ -228,14 +234,14 @@ mod check_tests {
 }
 
 /// FE Analysis
-pub(crate) fn FE(nelx: usize, nely: usize, x: DMatrix<f32>, penalty: f32) -> DVector<f32> {
+pub(crate) fn FE(nelx: usize, nely: usize, x: DMatrix<f64>, penalty: f64) -> DVector<f64> {
     let KE = lk();
-    let mut K: DMatrix<f32> = DMatrix::from_element(
+    let mut K: DMatrix<f64> = DMatrix::from_element(
         2 * (nelx + 1) * (nely + 1),
         2 * (nelx + 1) * (nely + 1),
         0.0,
     );
-    let mut F: DVector<f32> = DVector::from_element(2 * (nely + 1) * (nelx + 1), 0.0);
+    let mut F: DVector<f64> = DVector::from_element(2 * (nely + 1) * (nelx + 1), 0.0);
     for elx in 1..=nelx {
         for ely in 1..=nely {
             let n1 = (nely + 1) * (elx - 1) + ely;
@@ -269,7 +275,7 @@ pub(crate) fn FE(nelx: usize, nely: usize, x: DMatrix<f32>, penalty: f32) -> DVe
         K = K.remove_row(idx - 1);
     }
 
-    let mut U: DVector<f32> = K.try_inverse().expect("Cannot invert K") * F;
+    let mut U: DVector<f64> = K.try_inverse().expect("Cannot invert K") * F;
 
     fixeddofs.reverse();
     for idx in fixeddofs.to_owned() {
@@ -284,7 +290,7 @@ mod fe_tests {
 
     #[test]
     fn test_fe() {
-        let u_from_matlab: DVector<f32> = DVector::from_vec(vec![
+        let u_from_matlab: DVector<f64> = DVector::from_vec(vec![
             0.0, -5.6222, 0.0, -4.6222, 1.7222, -1.0000, -2.3222, 0.0,
         ]);
 
@@ -298,9 +304,9 @@ mod fe_tests {
 }
 
 /// Element stiffness matrix
-pub(crate) fn lk() -> DMatrix<f32> {
-    let elastic_modulus: f32 = 1.0;
-    let nu: f32 = 0.3;
+pub(crate) fn lk() -> DMatrix<f64> {
+    let elastic_modulus: f64 = 1.0;
+    let nu: f64 = 0.3;
     let k = [
         1. / 2. - nu / 6.,
         1. / 8. + nu / 8.,
@@ -332,7 +338,7 @@ mod lk_tests {
 
     #[test]
     fn test_lk() {
-        let ke_from_matlab: DMatrix<f32> = DMatrix::from_fn(8, 8, |idx, jdx| {
+        let ke_from_matlab: DMatrix<f64> = DMatrix::from_fn(8, 8, |idx, jdx| {
             let ke = [
                 [
                     0.4945, 0.1786, -0.3022, -0.0137, -0.2473, -0.1786, 0.0549, 0.0137,

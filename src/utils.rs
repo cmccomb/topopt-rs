@@ -1,17 +1,17 @@
 use nalgebra::DMatrix;
 
 /// Elementwise multiplication
-pub(crate) fn mult(x: DMatrix<f32>, y: DMatrix<f32>) -> DMatrix<f32> {
+pub(crate) fn mult(x: DMatrix<f64>, y: DMatrix<f64>) -> DMatrix<f64> {
     x.zip_map(&y, |x, y| x * y)
 }
 
 /// Elementwise minimum
-pub(crate) fn min(x: DMatrix<f32>, y: DMatrix<f32>) -> DMatrix<f32> {
+pub(crate) fn min(x: DMatrix<f64>, y: DMatrix<f64>) -> DMatrix<f64> {
     x.zip_map(&y, |x, y| tmin(x, y))
 }
 
 /// Elementwise maximum
-pub(crate) fn max(x: DMatrix<f32>, y: DMatrix<f32>) -> DMatrix<f32> {
+pub(crate) fn max(x: DMatrix<f64>, y: DMatrix<f64>) -> DMatrix<f64> {
     -min(-x, -y)
 }
 
@@ -31,6 +31,16 @@ pub(crate) fn tmax<T: PartialOrd>(x: T, y: T) -> T {
     } else {
         y
     }
+}
+
+pub(crate) fn nancount(matrix: &DMatrix<f64>) -> usize {
+    let mut counter = 0;
+    matrix.map(|x| {
+        if x.is_nan() {
+            counter += 1
+        }
+    });
+    counter
 }
 
 #[cfg(test)]
