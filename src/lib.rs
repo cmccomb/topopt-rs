@@ -271,7 +271,10 @@ pub(crate) fn FE(nelx: usize, nely: usize, x: &DMatrix<f64>, penalty: f64) -> DV
         K = K.remove_row(idx - 1);
     }
 
-    let mut U: DVector<f64> = K.try_inverse().expect("Cannot invert K") * F;
+    let mut U: DVector<f64> = K
+        .lu()
+        .solve(&F)
+        .expect("Cannot solve finite element problem");
 
     fixeddofs.reverse();
     for idx in fixeddofs.to_owned() {
