@@ -5,6 +5,7 @@
 #![doc = include_str!("../README.md")]
 
 use nalgebra::{DMatrix, DVector};
+use nalgebra_sparse::{csc::CscMatrix, factorization::CscCholesky};
 mod utils;
 use utils::{max, min};
 
@@ -129,7 +130,6 @@ pub(crate) fn optimality_criteria_update(
                 ),
             )
         });
-
         if xnew.sum() - volfrac * (nelx as f64) * (nely as f64) > 0.0 {
             l1 = lmid;
         } else {
@@ -270,11 +270,16 @@ pub(crate) fn FE(nelx: usize, nely: usize, x: &DMatrix<f64>, penalty: f64) -> DV
         K = K.remove_column(idx - 1);
         K = K.remove_row(idx - 1);
     }
+    //
+    // let mut U: DVector<f64> = K
+    //     .clone()
+    //     .lu()
+    //     .solve(&F)
+    //     .expect("Cannot solve finite element problem");
 
-    let mut U: DVector<f64> = K
-        .lu()
-        .solve(&F)
-        .expect("Cannot solve finite element problem");
+    let Ks = CscMatrix::from(&K);
+    let mut Umatrix = CscCholesky::factor(&Ks).unwrap().solve(&F);
+    let mut U: DVector<f64> = DVector::from_fn(Umatrix.shape().0, |idx, jdx| Umatrix[(idx, 0)]);
 
     fixeddofs.reverse();
     for idx in fixeddofs.to_owned() {
