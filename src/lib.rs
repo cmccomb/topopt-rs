@@ -15,9 +15,19 @@ use utils::{max, min};
 /// radius (`rmin`). It returns a matrix containing the optimized volume of material contained in each
 /// cell.
 /// ```
-///  let x = topopt::top(30, 10, 0.5, 3.0, 1.5);
+///  let x = topopt::top(30, 10, 0.5, 3.0, 1.5, None, None, None, None);
 /// ```
-pub fn top(nelx: usize, nely: usize, volfrac: f64, penalty: f64, rmin: f64) -> DMatrix<f64> {
+pub fn top(
+    nelx: usize,
+    nely: usize,
+    volfrac: f64,
+    penalty: f64,
+    rmin: f64,
+    loads: Option<DMatrix<f64>>,
+    boundary: Option<DMatrix<f64>>,
+    passive: Option<DMatrix<bool>>,
+    active: Option<DMatrix<bool>>,
+) -> DMatrix<f64> {
     // INITIALIZE
 
     let mut x: DMatrix<f64> = DMatrix::from_element(nely, nelx, volfrac);
@@ -60,7 +70,7 @@ pub fn top(nelx: usize, nely: usize, volfrac: f64, penalty: f64, rmin: f64) -> D
 
         // % DESIGN UPDATE BY THE OPTIMALITY CRITERIA METHOD
 
-        x = optimality_criteria_update(nelx, nely, &x, volfrac, &dc);
+        x = optimality_criteria_update(nelx, nely, &x, volfrac, &dc, &active, &passive);
 
         // % PRINT RESULTS
         change = (&x - xold).abs().max();
@@ -95,7 +105,7 @@ mod top_tests {
 
     #[test]
     fn test_top() {
-        let sol = crate::top(2, 2, 0.5, 3.0, 1.5);
+        let sol = crate::top(2, 2, 0.5, 3.0, 1.5, None, None, None, None);
         assert!(
             (sol - DMatrix::from_fn(2, 2, |idx, jdx| {
                 let x = [[0.5517, 0.3960], [0.5213, 0.5310]];
@@ -115,6 +125,8 @@ pub(crate) fn optimality_criteria_update(
     x: &DMatrix<f64>,
     volfrac: f64,
     dc: &DMatrix<f64>,
+    active: &Option<DMatrix<bool>>,
+    passive: &Option<DMatrix<bool>>,
 ) -> DMatrix<f64> {
     let mut l1: f64 = 0.0;
     let mut l2: f64 = 100_000.0;
@@ -131,6 +143,25 @@ pub(crate) fn optimality_criteria_update(
                 ),
             )
         });
+
+        // Handle active elements
+        if let Some(m) = active {
+            xnew.zip_apply(m, |mut xel, ael| {
+                if ael {
+                    *xel = 1.0;
+                }
+            });
+        }
+
+        // Handle passive elements
+        if let Some(m) = passive {
+            xnew.zip_apply(m, |mut xel, pel| {
+                if pel {
+                    *xel = 0.001;
+                }
+            });
+        }
+
         if xnew.sum() - volfrac * (nelx as f64) * (nely as f64) > 0.0 {
             l1 = lmid;
         } else {
