@@ -19,6 +19,7 @@ use utils::{max, min};
 /// ```
 pub fn top(nelx: usize, nely: usize, volfrac: f64, penalty: f64, rmin: f64) -> DMatrix<f64> {
     // INITIALIZE
+
     let mut x: DMatrix<f64> = DMatrix::from_element(nely, nelx, volfrac);
     let mut xold: DMatrix<f64> = DMatrix::from_element(nely, nelx, volfrac);
     let mut dc: DMatrix<f64> = DMatrix::from_element(nely, nelx, 1.0);
@@ -270,16 +271,11 @@ pub(crate) fn FE(nelx: usize, nely: usize, x: &DMatrix<f64>, penalty: f64) -> DV
         K = K.remove_column(idx - 1);
         K = K.remove_row(idx - 1);
     }
-    //
-    // let mut U: DVector<f64> = K
-    //     .clone()
-    //     .lu()
-    //     .solve(&F)
-    //     .expect("Cannot solve finite element problem");
 
-    let Ks = CscMatrix::from(&K);
-    let mut Umatrix = CscCholesky::factor(&Ks).unwrap().solve(&F);
-    let mut U: DVector<f64> = DVector::from_fn(Umatrix.shape().0, |idx, jdx| Umatrix[(idx, 0)]);
+    let K_sparse = CscMatrix::from(&K);
+    let mut U_as_matrix = CscCholesky::factor(&K_sparse).unwrap().solve(&F);
+    let mut U: DVector<f64> =
+        DVector::from_fn(U_as_matrix.shape().0, |idx, jdx| U_as_matrix[(idx, 0)]);
 
     fixeddofs.reverse();
     for idx in fixeddofs.to_owned() {
