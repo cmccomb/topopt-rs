@@ -183,6 +183,8 @@ mod oc_tests {
             &DMatrix::from_element(3, 3, 1.0),
             0.5,
             &-DMatrix::from_element(3, 3, 0.1),
+            &None,
+            &None,
         );
         assert!((oc - DMatrix::from_element(3, 3, 0.8)).max() < 0.001)
     }
