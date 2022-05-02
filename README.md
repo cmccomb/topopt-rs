@@ -5,7 +5,7 @@
 # About
 This package performs 2-dimensional topology optimization and is a port of ["A 99 line topology optimization code written in Matlab"](https://www.topopt.mek.dtu.dk/apps-and-software/a-99-line-topology-optimization-code-written-in-matlab).
 
-# Usage
+# Basic Usage
 Usage follows almost exactly the same format as the original topology optimization code:
 ```rust
 let nelx = 60;

@@ -9,22 +9,32 @@ use nalgebra_sparse::{csc::CscMatrix, factorization::CscCholesky};
 mod utils;
 use utils::{max, min};
 
-/// The topology optimization function. It takes inputs for the number of elements in the *x*
-/// direction (`nelx`), the number of elements in the *y* direction (`nely`), the volume fraction
-/// of material to be optimized (`volfrac`), the penalty weighting (`penalty`), and filter
-/// radius (`rmin`). It returns a matrix containing the optimized volume of material contained in each
+/// The topology optimization solver.
+///
+/// It takes the following inputs
+/// - `nelx`, the number of elements in the *x* direction
+/// - `nely`, the number of elements in the *x* direction
+/// - `volfrac`, the volume fraction of material to be optimized for
+/// - `penalty` the penalty weight
+/// - `rmin`, the filter radius
+/// - `loads`, an optional `nelx+1`-by-`nely+1` matrix of `f64` tuples indicating the load applied to each node in *x*/*y* pairs.
+/// - `boundary`, an optional `nelx+1`-by-`nely+1` matrix of `bool` tuples indicating the degrees of freedom of each node in *x*/*y* pairs
+/// - `passive`, an optional `nelx`-by-`nely` matrix of `bool`s indicating elements which should be active (always void)
+/// - `active`, an optional `nelx`-by-`nely` matrix of `bool`s indicating elements which should be active (always filled)
+///
+/// It returns a matrix of size `nelx`-by-`nely` containing the optimized volume of material contained in each
 /// cell.
 /// ```
 ///  let x = topopt::top(30, 10, 0.5, 3.0, 1.5, None, None, None, None);
 /// ```
 pub fn top(
-    nelx: usize,
+    nelx: usize, // asdfasdf
     nely: usize,
     volfrac: f64,
     penalty: f64,
     rmin: f64,
-    loads: Option<(DMatrix<f64>, DMatrix<f64>)>,
-    boundary: Option<(DMatrix<f64>, DMatrix<f64>)>,
+    loads: Option<DMatrix<(f64, f64)>>,
+    boundary: Option<DMatrix<(bool, bool)>>,
     passive: Option<DMatrix<bool>>,
     active: Option<DMatrix<bool>>,
 ) -> DMatrix<f64> {
@@ -39,7 +49,7 @@ pub fn top(
         iter += 1;
         xold = x.clone();
         // FE-ANALYSIS
-        let U = FE(nelx, nely, &x, penalty);
+        let U = FE(nelx, nely, &x, penalty, &loads, &boundary);
 
         let mut c = 0.0;
         for ely in 1..=nely {
@@ -264,14 +274,20 @@ mod check_tests {
 }
 
 /// FE Analysis
-pub(crate) fn FE(nelx: usize, nely: usize, x: &DMatrix<f64>, penalty: f64) -> DVector<f64> {
+pub(crate) fn FE(
+    nelx: usize,
+    nely: usize,
+    x: &DMatrix<f64>,
+    penalty: f64,
+    loads: &Option<DMatrix<(f64, f64)>>,
+    boundary: &Option<DMatrix<(bool, bool)>>,
+) -> DVector<f64> {
     let KE = lk();
     let mut K: DMatrix<f64> = DMatrix::from_element(
         2 * (nelx + 1) * (nely + 1),
         2 * (nelx + 1) * (nely + 1),
         0.0,
     );
-    let mut F: DVector<f64> = DVector::from_element(2 * (nely + 1) * (nelx + 1), 0.0);
     for elx in 1..=nelx {
         for ely in 1..=nely {
             let n1 = (nely + 1) * (elx - 1) + ely;
@@ -294,21 +310,62 @@ pub(crate) fn FE(nelx: usize, nely: usize, x: &DMatrix<f64>, penalty: f64) -> DV
         }
     }
     // DEFINE LOADS AND SUPPORTS (HALF MBB-BEAM)
-    F[1] = -1.0;
-    let mut fixeddofs: Vec<usize> = (1..(2 * (nely + 1))).step_by(2).collect();
-    fixeddofs.push(2 * (nelx + 1) * (nely + 1));
+    let mut F: DVector<f64> = DVector::from_element(2 * (nely + 1) * (nelx + 1), 0.0);
+    match loads {
+        None => {
+            F[1] = -1.0;
+        }
+        Some(load_matrix) => {
+            let mut counter: usize = 0;
+            for idx in 0..nelx {
+                for jdx in 0..nely {
+                    F[counter] = load_matrix[(idx, jdx)].0;
+                    F[counter + 1] = load_matrix[(idx, jdx)].1;
+                    counter += 2;
+                }
+            }
+        }
+    }
+
+    let mut fixeddofs: Vec<usize> = vec![];
+    match boundary {
+        None => {
+            fixeddofs = (1..(2 * (nely + 1))).step_by(2).collect();
+            fixeddofs.push(2 * (nelx + 1) * (nely + 1));
+        }
+        Some(boundary_matrix) => {
+            let mut counter: usize = 1;
+            for idx in 0..=nelx {
+                for jdx in 0..=nely {
+                    if boundary_matrix[(idx, jdx)].0 {
+                        fixeddofs.push(counter);
+                    }
+
+                    if boundary_matrix[(idx, jdx)].1 {
+                        fixeddofs.push(counter + 1);
+                    }
+
+                    counter += 2;
+                }
+            }
+        }
+    }
     fixeddofs.sort_by(|a, b| b.cmp(a));
+
+    // Do magic
     for idx in fixeddofs.to_owned() {
         F = F.remove_row(idx - 1);
         K = K.remove_column(idx - 1);
         K = K.remove_row(idx - 1);
     }
 
+    // Solve matrix
     let K_sparse = CscMatrix::from(&K);
     let mut U_as_matrix = CscCholesky::factor(&K_sparse).unwrap().solve(&F);
     let mut U: DVector<f64> =
         DVector::from_fn(U_as_matrix.shape().0, |idx, jdx| U_as_matrix[(idx, 0)]);
 
+    // Undo magic
     fixeddofs.reverse();
     for idx in fixeddofs.to_owned() {
         U = U.insert_row(idx - 1, 0.0);
@@ -327,7 +384,8 @@ mod fe_tests {
         ]);
 
         assert!(
-            (crate::FE(1, 1, &DMatrix::from_element(1, 1, 1.0), 10.0) - u_from_matlab)
+            (crate::FE(1, 1, &DMatrix::from_element(1, 1, 1.0), 10.0, &None, &None)
+                - u_from_matlab)
                 .abs()
                 .max()
                 < 0.001
