@@ -49,7 +49,7 @@ pub fn top(
         iter += 1;
         xold = x.clone();
         // FE-ANALYSIS
-        let U = FE(nelx, nely, &x, penalty, &loads, &boundary);
+        let U = finite_element(nelx, nely, &x, penalty, &loads, &boundary);
 
         let mut c = 0.0;
         for ely in 1..=nely {
@@ -274,7 +274,7 @@ mod check_tests {
 }
 
 /// FE Analysis
-pub(crate) fn FE(
+pub(crate) fn finite_element(
     nelx: usize,
     nely: usize,
     x: &DMatrix<f64>,
@@ -378,13 +378,13 @@ mod fe_tests {
     use nalgebra::{DMatrix, DVector};
 
     #[test]
-    fn test_fe() {
+    fn test_finite_element() {
         let u_from_matlab: DVector<f64> = DVector::from_vec(vec![
             0.0, -5.6222, 0.0, -4.6222, 1.7222, -1.0000, -2.3222, 0.0,
         ]);
 
         assert!(
-            (crate::FE(1, 1, &DMatrix::from_element(1, 1, 1.0), 10.0, &None, &None)
+            (crate::finite_element(1, 1, &DMatrix::from_element(1, 1, 1.0), 10.0, &None, &None)
                 - u_from_matlab)
                 .abs()
                 .max()
@@ -462,6 +462,7 @@ mod lk_tests {
 }
 
 ///
+#[derive(Clone)]
 pub struct Settings {
     nelx: usize,
     nely: usize,
@@ -511,19 +512,73 @@ impl Default for Settings {
 impl Settings {
     /// ```
     /// use topopt::Settings;
-    /// Settings::new();
+    /// Settings::new(60, 20, 0.5);
     /// ```
-    pub fn new() -> Self {
+    pub fn new(nelx: usize, nely: usize, volume_fraction: f64) -> Self {
         Self {
-            nelx: 0,
-            nely: 0,
-            volume_fraction: 0.0,
-            filter_radius: 0.0,
-            penalty_weight: 0.0,
+            nelx,
+            nely,
+            volume_fraction,
+            filter_radius: 1.5,
+            penalty_weight: 3.0,
             loads: DMatrix::from_element(0, 0, (0.0, 0.0)),
             boundary: DMatrix::from_element(0, 0, (false, false)),
             passive: DMatrix::from_element(0, 0, false),
             active: DMatrix::from_element(0, 0, false),
         }
+    }
+
+    pub fn with_filter_radius(&mut self, filter_radius: f64) -> Self {
+        self.filter_radius = filter_radius;
+        self.clone()
+    }
+
+    pub fn with_penalty_weight(&mut self, penalty_weight: f64) -> Self {
+        self.penalty_weight = penalty_weight;
+        self.clone()
+    }
+
+    pub fn with_left_boundary(&mut self, x: bool, y: bool) -> Self {
+        for idx in 0..=self.nelx {
+            for jdx in 0..=self.nely {
+                if idx == 0 {
+                    self.boundary[(idx, jdx)] = (x, y);
+                }
+            }
+        }
+        self.clone()
+    }
+
+    pub fn with_right_boundary(&mut self, x: bool, y: bool) -> Self {
+        for idx in 0..=self.nelx {
+            for jdx in 0..=self.nely {
+                if idx == self.nelx {
+                    self.boundary[(idx, jdx)] = (x, y);
+                }
+            }
+        }
+        self.clone()
+    }
+
+    pub fn with_top_boundary(&mut self, x: bool, y: bool) -> Self {
+        for idx in 0..=self.nelx {
+            for jdx in 0..=self.nely {
+                if jdx == 0 {
+                    self.boundary[(idx, jdx)] = (x, y);
+                }
+            }
+        }
+        self.clone()
+    }
+
+    pub fn with_bottom_boundary(&mut self, x: bool, y: bool) -> Self {
+        for idx in 0..=self.nelx {
+            for jdx in 0..=self.nely {
+                if jdx == self.nely {
+                    self.boundary[(idx, jdx)] = (x, y);
+                }
+            }
+        }
+        self.clone()
     }
 }
