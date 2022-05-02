@@ -23,13 +23,12 @@ pub fn top(
     volfrac: f64,
     penalty: f64,
     rmin: f64,
-    loads: Option<DMatrix<f64>>,
-    boundary: Option<DMatrix<f64>>,
+    loads: Option<(DMatrix<f64>, DMatrix<f64>)>,
+    boundary: Option<(DMatrix<f64>, DMatrix<f64>)>,
     passive: Option<DMatrix<bool>>,
     active: Option<DMatrix<bool>>,
 ) -> DMatrix<f64> {
     // INITIALIZE
-
     let mut x: DMatrix<f64> = DMatrix::from_element(nely, nelx, volfrac);
     let mut xold: DMatrix<f64> = DMatrix::from_element(nely, nelx, volfrac);
     let mut dc: DMatrix<f64> = DMatrix::from_element(nely, nelx, 1.0);
