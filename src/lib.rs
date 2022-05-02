@@ -460,3 +460,70 @@ mod lk_tests {
         assert!((ke_from_matlab - crate::lk()).abs().max() < 0.001);
     }
 }
+
+///
+pub struct Settings {
+    nelx: usize,
+    nely: usize,
+    volume_fraction: f64,
+    filter_radius: f64,
+    penalty_weight: f64,
+    loads: DMatrix<(f64, f64)>,
+    boundary: DMatrix<(bool, bool)>,
+    passive: DMatrix<bool>,
+    active: DMatrix<bool>,
+}
+
+impl Default for Settings {
+    /// ```
+    /// use topopt::Settings;
+    /// Settings::default();
+    /// ```
+    fn default() -> Self {
+        Self {
+            nelx: 60,
+            nely: 20,
+            volume_fraction: 0.5,
+            filter_radius: 1.5,
+            penalty_weight: 3.0,
+            loads: DMatrix::from_fn(61, 21, |idx, jdx| {
+                if idx == 0 && jdx == 0 {
+                    (0.0, -1.0)
+                } else {
+                    (0.0, 0.0)
+                }
+            }),
+            boundary: DMatrix::from_fn(61, 21, |idx, jdx| {
+                if idx == 0 {
+                    (true, false)
+                } else if idx == 60 && jdx == 20 {
+                    (false, true)
+                } else {
+                    (false, false)
+                }
+            }),
+            passive: DMatrix::from_element(60, 20, false),
+            active: DMatrix::from_element(60, 20, false),
+        }
+    }
+}
+
+impl Settings {
+    /// ```
+    /// use topopt::Settings;
+    /// Settings::new();
+    /// ```
+    pub fn new() -> Self {
+        Self {
+            nelx: 0,
+            nely: 0,
+            volume_fraction: 0.0,
+            filter_radius: 0.0,
+            penalty_weight: 0.0,
+            loads: DMatrix::from_element(0, 0, (0.0, 0.0)),
+            boundary: DMatrix::from_element(0, 0, (false, false)),
+            passive: DMatrix::from_element(0, 0, false),
+            active: DMatrix::from_element(0, 0, false),
+        }
+    }
+}
