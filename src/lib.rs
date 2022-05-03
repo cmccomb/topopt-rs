@@ -108,6 +108,20 @@ pub fn top(
     x
 }
 
+pub fn solve(settings: Settings) -> DMatrix<f64> {
+    top(
+        settings.nelx,
+        settings.nely,
+        settings.volume_fraction,
+        settings.penalty_weight,
+        settings.filter_radius,
+        Some(settings.loads),
+        Some(settings.boundary),
+        Some(settings.active),
+        Some(settings.passive),
+    )
+}
+
 #[cfg(test)]
 mod top_tests {
     use nalgebra::DMatrix;
@@ -155,6 +169,7 @@ pub(crate) fn optimality_criteria_update(
 
         // Handle active elements
         if let Some(m) = active {
+            println!("{:?} {:?}", m.shape(), xnew.shape());
             xnew.zip_apply(m, |mut xel, ael| {
                 if ael {
                     *xel = 1.0;
@@ -503,8 +518,8 @@ impl Default for Settings {
                     (false, false)
                 }
             }),
-            passive: DMatrix::from_element(60, 20, false),
-            active: DMatrix::from_element(60, 20, false),
+            passive: DMatrix::from_element(20, 60, false),
+            active: DMatrix::from_element(20, 60, false),
         }
     }
 }
@@ -521,10 +536,10 @@ impl Settings {
             volume_fraction,
             filter_radius: 1.5,
             penalty_weight: 3.0,
-            loads: DMatrix::from_element(0, 0, (0.0, 0.0)),
-            boundary: DMatrix::from_element(0, 0, (false, false)),
-            passive: DMatrix::from_element(0, 0, false),
-            active: DMatrix::from_element(0, 0, false),
+            loads: DMatrix::from_element(nelx + 1, nely + 1, (0.0, 0.0)),
+            boundary: DMatrix::from_element(nelx + 1, nely + 1, (false, false)),
+            passive: DMatrix::from_element(nely, nelx, false),
+            active: DMatrix::from_element(nely, nelx, false),
         }
     }
 
@@ -579,6 +594,48 @@ impl Settings {
                 }
             }
         }
+        self.clone()
+    }
+
+    pub fn with_vertical_midline_boundary(&mut self, x: bool, y: bool) -> Self {
+        for idx in 0..=self.nelx {
+            for jdx in 0..=self.nely {
+                if idx == self.nelx / 2 {
+                    self.boundary[(idx, jdx)] = (x, y);
+                }
+            }
+        }
+        self.clone()
+    }
+
+    pub fn with_horizontal_midline_boundary(&mut self, x: bool, y: bool) -> Self {
+        for idx in 0..=self.nelx {
+            for jdx in 0..=self.nely {
+                if jdx == self.nely / 2 {
+                    self.boundary[(idx, jdx)] = (x, y);
+                }
+            }
+        }
+        self.clone()
+    }
+
+    pub fn with_bottom_right_boundary(&mut self, x: bool, y: bool) -> Self {
+        self.boundary[(self.nelx, self.nely)] = (x, y);
+        self.clone()
+    }
+
+    pub fn with_bottom_left_boundary(&mut self, x: bool, y: bool) -> Self {
+        self.boundary[(0, self.nely)] = (x, y);
+        self.clone()
+    }
+
+    pub fn with_boundaries(&mut self, boundary: DMatrix<(bool, bool)>) -> Self {
+        self.boundary = boundary;
+        self.clone()
+    }
+
+    pub fn with_loads(&mut self, loads: DMatrix<(f64, f64)>) -> Self {
+        self.loads = loads;
         self.clone()
     }
 }
