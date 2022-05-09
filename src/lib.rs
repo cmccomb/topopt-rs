@@ -552,8 +552,18 @@ impl Settings {
         self.penalty_weight = penalty_weight;
         self.clone()
     }
+}
 
-    pub fn with_left_boundary(&mut self, x: bool, y: bool) -> Self {
+/// # Modifying the Boundary Conditions
+/// This group of methods provides utilities for changing the boundary conditions. These methods are applied like so:
+///```
+/// # use topopt::Settings;
+/// let settings = Settings::new(120, 30, 0.5)
+///     .with_bottom_right_bc(false, true)
+///     .with_bottom_left_bc(false, true);
+/// ```
+impl Settings {
+    pub fn with_left_bc(&mut self, x: bool, y: bool) -> Self {
         for idx in 0..=self.nelx {
             for jdx in 0..=self.nely {
                 if idx == 0 {
@@ -564,7 +574,7 @@ impl Settings {
         self.clone()
     }
 
-    pub fn with_right_boundary(&mut self, x: bool, y: bool) -> Self {
+    pub fn with_right_bc(&mut self, x: bool, y: bool) -> Self {
         for idx in 0..=self.nelx {
             for jdx in 0..=self.nely {
                 if idx == self.nelx {
@@ -575,7 +585,7 @@ impl Settings {
         self.clone()
     }
 
-    pub fn with_top_boundary(&mut self, x: bool, y: bool) -> Self {
+    pub fn with_top_bc(&mut self, x: bool, y: bool) -> Self {
         for idx in 0..=self.nelx {
             for jdx in 0..=self.nely {
                 if jdx == 0 {
@@ -586,7 +596,7 @@ impl Settings {
         self.clone()
     }
 
-    pub fn with_bottom_boundary(&mut self, x: bool, y: bool) -> Self {
+    pub fn with_bottom_bc(&mut self, x: bool, y: bool) -> Self {
         for idx in 0..=self.nelx {
             for jdx in 0..=self.nely {
                 if jdx == self.nely {
@@ -597,7 +607,7 @@ impl Settings {
         self.clone()
     }
 
-    pub fn with_vertical_midline_boundary(&mut self, x: bool, y: bool) -> Self {
+    pub fn with_vertical_midline_bc(&mut self, x: bool, y: bool) -> Self {
         for idx in 0..=self.nelx {
             for jdx in 0..=self.nely {
                 if idx == self.nelx / 2 {
@@ -608,7 +618,7 @@ impl Settings {
         self.clone()
     }
 
-    pub fn with_horizontal_midline_boundary(&mut self, x: bool, y: bool) -> Self {
+    pub fn with_horizontal_midline_bc(&mut self, x: bool, y: bool) -> Self {
         for idx in 0..=self.nelx {
             for jdx in 0..=self.nely {
                 if jdx == self.nely / 2 {
@@ -619,23 +629,98 @@ impl Settings {
         self.clone()
     }
 
-    pub fn with_bottom_right_boundary(&mut self, x: bool, y: bool) -> Self {
+    pub fn with_bottom_right_bc(&mut self, x: bool, y: bool) -> Self {
         self.boundary[(self.nelx, self.nely)] = (x, y);
         self.clone()
     }
 
-    pub fn with_bottom_left_boundary(&mut self, x: bool, y: bool) -> Self {
+    pub fn with_bottom_left_bc(&mut self, x: bool, y: bool) -> Self {
         self.boundary[(0, self.nely)] = (x, y);
         self.clone()
     }
 
-    pub fn with_boundaries(&mut self, boundary: DMatrix<(bool, bool)>) -> Self {
+    pub fn with_top_right_bc(&mut self, x: bool, y: bool) -> Self {
+        self.boundary[(self.nelx, 0)] = (x, y);
+        self.clone()
+    }
+
+    pub fn with_top_left_bc(&mut self, x: bool, y: bool) -> Self {
+        self.boundary[(0, 0)] = (x, y);
+        self.clone()
+    }
+
+    pub fn with_bc(&mut self, boundary: DMatrix<(bool, bool)>) -> Self {
         self.boundary = boundary;
+        self.clone()
+    }
+
+    pub fn set_bc(&mut self, idx: usize, jdx: usize, x: bool, y: bool) -> Self {
+        self.boundary[(idx, jdx)] = (x, y);
+        self.clone()
+    }
+}
+/// # Modifying the Load Case
+/// This group of methods provides utilities for changing the load case. These methods are applied like so:
+///```
+/// # use topopt::Settings;
+/// let settings = Settings::new(120, 30, 0.5)
+///     .with_bottom_right_bc(false, true)
+///     .with_bottom_left_bc(false, true)
+///     .with_top_middle_load(0.0, -1.0);
+/// ```
+impl Settings {
+    pub fn with_bottom_right_load(&mut self, x: f64, y: f64) -> Self {
+        self.loads[(self.nelx, self.nely)] = (x, y);
+        self.clone()
+    }
+
+    pub fn with_bottom_left_load(&mut self, x: f64, y: f64) -> Self {
+        self.loads[(0, self.nely)] = (x, y);
+        self.clone()
+    }
+
+    pub fn with_top_right_load(&mut self, x: f64, y: f64) -> Self {
+        self.loads[(self.nelx, 0)] = (x, y);
+        self.clone()
+    }
+
+    pub fn with_top_left_load(&mut self, x: f64, y: f64) -> Self {
+        self.loads[(0, 0)] = (x, y);
+        self.clone()
+    }
+
+    pub fn with_top_middle_load(&mut self, x: f64, y: f64) -> Self {
+        self.loads[(self.nelx / 2, 0)] = (x, y);
+        self.clone()
+    }
+
+    pub fn with_bottom_middle_load(&mut self, x: f64, y: f64) -> Self {
+        self.loads[(self.nelx / 2, self.nely)] = (x, y);
+        self.clone()
+    }
+
+    pub fn with_right_middle_load(&mut self, x: f64, y: f64) -> Self {
+        self.loads[(self.nelx, self.nely / 2)] = (x, y);
+        self.clone()
+    }
+
+    pub fn with_left_middle_load(&mut self, x: f64, y: f64) -> Self {
+        self.loads[(0, self.nely / 2)] = (x, y);
+        self.clone()
+    }
+
+    pub fn with_centered_load(&mut self, x: f64, y: f64) -> Self {
+        self.loads[(self.nelx / 2, self.nely / 2)] = (x, y);
         self.clone()
     }
 
     pub fn with_loads(&mut self, loads: DMatrix<(f64, f64)>) -> Self {
         self.loads = loads;
+        self.clone()
+    }
+
+    pub fn set_load(&mut self, idx: usize, jdx: usize, x: bool, y: bool) -> Self {
+        self.boundary[(idx, jdx)] = (x, y);
         self.clone()
     }
 }
