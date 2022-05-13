@@ -117,8 +117,8 @@ pub fn solve(settings: Settings) -> DMatrix<f64> {
         settings.filter_radius,
         Some(settings.loads),
         Some(settings.boundary),
-        Some(settings.active),
         Some(settings.passive),
+        Some(settings.active),
     )
 }
 
@@ -550,6 +550,15 @@ impl Settings {
 
     pub fn with_penalty_weight(&mut self, penalty_weight: f64) -> Self {
         self.penalty_weight = penalty_weight;
+        self.clone()
+    }
+
+    pub fn with_active_elements(&mut self, mask: DMatrix<bool>) -> Self {
+        self.active = mask;
+        self.clone()
+    }
+    pub fn with_passive_elements(&mut self, mask: DMatrix<bool>) -> Self {
+        self.passive = mask;
         self.clone()
     }
 }
