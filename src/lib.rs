@@ -21,14 +21,8 @@ use utils::{max, min};
 /// - `boundary`, an optional `nelx+1`-by-`nely+1` matrix of `bool` tuples indicating the degrees of freedom of each node in *x*/*y* pairs
 /// - `passive`, an optional `nelx`-by-`nely` matrix of `bool`s indicating elements which should be active (always void)
 /// - `active`, an optional `nelx`-by-`nely` matrix of `bool`s indicating elements which should be active (always filled)
-///
-/// It returns a matrix of size `nelx`-by-`nely` containing the optimized volume of material contained in each
-/// cell.
-/// ```
-///  let x = topopt::top(30, 10, 0.5, 3.0, 1.5, None, None, None, None);
-/// ```
-pub fn top(
-    nelx: usize, // asdfasdf
+pub(crate) fn top(
+    nelx: usize,
     nely: usize,
     volfrac: f64,
     penalty: f64,
@@ -475,7 +469,7 @@ mod lk_tests {
     }
 }
 
-///
+/// A settings struct, used to define boundary conditions, loads, and elements.
 #[derive(Clone)]
 pub struct Settings {
     nelx: usize,
@@ -524,6 +518,7 @@ impl Default for Settings {
 }
 
 impl Settings {
+    /// Specify the number of elements and volume fraction
     /// ```
     /// use topopt::Settings;
     /// Settings::new(60, 20, 0.5);
@@ -556,8 +551,15 @@ impl Settings {
         self.active = mask;
         self.clone()
     }
+
     pub fn with_passive_elements(&mut self, mask: DMatrix<bool>) -> Self {
         self.passive = mask;
+        self.clone()
+    }
+
+    pub fn with_size(&mut self, nelx: usize, nely: usize) -> Self {
+        self.nelx = nelx;
+        self.nely = nely;
         self.clone()
     }
 }
@@ -585,7 +587,7 @@ impl Settings {
     pub fn with_right_bc(&mut self, x: bool, y: bool) -> Self {
         for idx in 0..=self.nelx {
             for jdx in 0..=self.nely {
-                if idx == self.nelx {
+                if idx == self.nelx + 1 {
                     self.boundary[(idx, jdx)] = (x, y);
                 }
             }

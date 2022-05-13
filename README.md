@@ -6,15 +6,20 @@
 This package performs 2-dimensional topology optimization and is a port of ["A 99 line topology optimization code written in Matlab"](https://www.topopt.mek.dtu.dk/apps-and-software/a-99-line-topology-optimization-code-written-in-matlab).
 
 # Basic Usage
-Usage follows almost exactly the same format as the original topology optimization code:
+Running the solve function with default settings will find a solution to teh Messerschmitt–Bölkow–Blohm simply supported beam (enforcing symmetry).
 ```rust
-let nelx = 60;
-let nely = 10;
-let volfrac = 0.5;
-let penalty = 3.0;
-let rmin = 1.5;
-let x = topopt::top(nelx, nely, volfrac, penalty, rmin, None, None, None, None);
+topopt::solve(topopt::Settings::default());
 ```
-This will display the progress of the algorithm and a visualization of the optimized structure in the command line
+The progress of the algorithm and a visualization of the optimized structure will be displayed in the command line
 
 ![](https://raw.githubusercontent.com/cmccomb/topopt-rs/master/mbb.gif)
+
+Alternatively, we could set up with the same simulation explicitly:
+```rust
+topopt::solve(
+    topopt::Settings::new(60, 20, 0.5)
+        .with_left_bc(true, false)
+        .with_bottom_right_bc(false, true)
+        .with_top_left_load(0.0, -1.0),
+);
+```
