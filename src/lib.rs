@@ -102,6 +102,7 @@ pub(crate) fn top(
     x
 }
 
+/// Solve the topology optimization problem specified in settings.
 pub fn solve(settings: Settings) -> DMatrix<f64> {
     top(
         settings.nelx,
@@ -537,26 +538,37 @@ impl Settings {
         }
     }
 
+    /// Specify the filter radius. If not specified, the default value is 1.5.
     pub fn with_filter_radius(&mut self, filter_radius: f64) -> Self {
         self.filter_radius = filter_radius;
         self.clone()
     }
 
+    /// Specify the penalty weight. If not specified, the default value is 1.5.
     pub fn with_penalty_weight(&mut self, penalty_weight: f64) -> Self {
         self.penalty_weight = penalty_weight;
         self.clone()
     }
 
+    /// Specify elements that must remain active (i.e., filled). The active element boolean mask
+    /// must have shape `nely` &times; `nelx`.
     pub fn with_active_elements(&mut self, mask: DMatrix<bool>) -> Self {
-        self.active = mask;
+        if self.active.shape() == (self.nely, self.nelx) {
+            self.active = mask;
+        } else {
+            panic!("The active element boolean mask must have shape (nely, nelx)")
+        }
         self.clone()
     }
 
+    /// Specify elements that must remain passive (i.e., filled). The passive element boolean mask
+    /// must have shape `nely` &times; `nelx`.
     pub fn with_passive_elements(&mut self, mask: DMatrix<bool>) -> Self {
         self.passive = mask;
         self.clone()
     }
 
+    /// Specify the dimensions of the domain.
     pub fn with_size(&mut self, nelx: usize, nely: usize) -> Self {
         self.nelx = nelx;
         self.nely = nely;
@@ -659,11 +671,14 @@ impl Settings {
         self.clone()
     }
 
+    /// Specify loading at every node. This matrix must shape `nely+1` &times; `nelx+1`, where each
+    /// element is a tuple defining whether or not the node is fixed in _x_ and _y_ directions.
     pub fn with_bc(&mut self, boundary: DMatrix<(bool, bool)>) -> Self {
         self.boundary = boundary;
         self.clone()
     }
 
+    /// Set the boundary condition at a specific node. The argument define the indices of the node to be loaded, and the loads in the _x_ and _y_ directions.
     pub fn set_bc(&mut self, idx: usize, jdx: usize, x: bool, y: bool) -> Self {
         self.boundary[(idx, jdx)] = (x, y);
         self.clone()
@@ -679,56 +694,68 @@ impl Settings {
 ///     .with_top_middle_load(0.0, -1.0);
 /// ```
 impl Settings {
+    /// Set a load at the bottom right corner of the domain. The argument define loads in the _x_ and _y_ directions.
     pub fn with_bottom_right_load(&mut self, x: f64, y: f64) -> Self {
         self.loads[(self.nelx, self.nely)] = (x, y);
         self.clone()
     }
 
+    /// Set a load at the bottom left corner of the domain. The argument define loads in the _x_ and _y_ directions.
     pub fn with_bottom_left_load(&mut self, x: f64, y: f64) -> Self {
         self.loads[(0, self.nely)] = (x, y);
         self.clone()
     }
 
+    /// Set a load at the top right corner of the domain. The argument define loads in the _x_ and _y_ directions.
     pub fn with_top_right_load(&mut self, x: f64, y: f64) -> Self {
         self.loads[(self.nelx, 0)] = (x, y);
         self.clone()
     }
 
+    /// Set a load at the top left corner of the domain. The argument define loads in the _x_ and _y_ directions.
     pub fn with_top_left_load(&mut self, x: f64, y: f64) -> Self {
         self.loads[(0, 0)] = (x, y);
         self.clone()
     }
 
+    /// Set a load at the middle of the top side of the domain. The argument define loads in the _x_ and _y_ directions.
     pub fn with_top_middle_load(&mut self, x: f64, y: f64) -> Self {
         self.loads[(self.nelx / 2, 0)] = (x, y);
         self.clone()
     }
 
+    /// Set a load at the middle of the bottom side of the domain. The argument define loads in the _x_ and _y_ directions.
     pub fn with_bottom_middle_load(&mut self, x: f64, y: f64) -> Self {
         self.loads[(self.nelx / 2, self.nely)] = (x, y);
         self.clone()
     }
 
+    /// Set a load at the middle of the right side of the domain. The argument define loads in the _x_ and _y_ directions.
     pub fn with_right_middle_load(&mut self, x: f64, y: f64) -> Self {
         self.loads[(self.nelx, self.nely / 2)] = (x, y);
         self.clone()
     }
 
+    /// Set a load at the middle of the left side of the domain. The argument define loads in the _x_ and _y_ directions.
     pub fn with_left_middle_load(&mut self, x: f64, y: f64) -> Self {
         self.loads[(0, self.nely / 2)] = (x, y);
         self.clone()
     }
 
+    /// Set a load at the center of the domain. The argument define loads in the _x_ and _y_ directions.
     pub fn with_centered_load(&mut self, x: f64, y: f64) -> Self {
         self.loads[(self.nelx / 2, self.nely / 2)] = (x, y);
         self.clone()
     }
 
+    /// Specify loading at every node. This matrix must shape `nely+1` &times; `nelx+1`, where each
+    /// element is a tuple defining the loading in _x_ and _y_ directions.
     pub fn with_loads(&mut self, loads: DMatrix<(f64, f64)>) -> Self {
         self.loads = loads;
         self.clone()
     }
 
+    /// Set a load of a specific node. The argument define the indices of the node to be loaded, and the loads in the _x_ and _y_ directions.
     pub fn set_load(&mut self, idx: usize, jdx: usize, x: bool, y: bool) -> Self {
         self.boundary[(idx, jdx)] = (x, y);
         self.clone()
