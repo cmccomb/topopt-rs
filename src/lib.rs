@@ -169,7 +169,6 @@ pub(crate) fn optimality_criteria_update(
 
         // Handle active elements
         if let Some(m) = active {
-            println!("{:?} {:?}", m.shape(), xnew.shape());
             xnew.zip_apply(m, |mut xel, ael| {
                 if ael {
                     *xel = 1.0;
