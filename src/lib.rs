@@ -35,11 +35,11 @@ pub(crate) fn top(
 ) -> DMatrix<f64> {
     // INITIALIZE
     let mut x: DMatrix<f64> = DMatrix::from_element(nely, nelx, volfrac);
-    let mut xold: DMatrix<f64> ;
+    let mut xold: DMatrix<f64>;
     let mut dc: DMatrix<f64> = DMatrix::from_element(nely, nelx, 1.0);
     let mut iter: usize = 0;
     let mut change: f64 = 1.0;
-    let mut vol: f64 = 0.0;
+
     while change > 0.01 {
         iter += 1;
         xold = x.clone();
@@ -72,32 +72,36 @@ pub(crate) fn top(
         // FILTERING OF SENSITIVITIES
         dc = check(nelx, nely, rmin, &x, &dc);
 
-        // % DESIGN UPDATE BY THE OPTIMALITY CRITERIA METHOD
-
+        // % Design update by the optimality criteria method
         x = optimality_criteria_update(nelx, nely, &x, volfrac, &dc, &active, &passive);
 
         // % PRINT RESULTS
         change = (&x - xold).abs().max();
-        vol = x.sum() / ((nelx * nely) as f64);
 
-        print!("{esc}c", esc = 27 as char);
-        println!("Iter: {iter:04}\tObj: {c:4.3}\tVol: {vol:1.3}\tΔ: {change:1.3}");
-        // Print
-        for ey in 0..nely {
-            for ex in 0..nelx {
-                if x[(ey, ex)] > 0.75 {
-                    print!("██");
-                } else if x[(ey, ex)] > 0.5 {
-                    print!("▒▒");
-                } else if x[(ey, ex)] >= 0.25 {
-                    print!("░░");
-                } else if x[(ey, ex)].is_nan() {
-                    print!("OO");
-                } else {
-                    print!("  ");
+        #[cfg(feature = "tui")]
+        {
+            print!("{esc}c", esc = 27 as char);
+            println!(
+                "Iter: {iter:04}\tObj: {c:4.3}\tVol: {vol:1.3}\tΔ: {change:1.3}",
+                vol = x.sum() / ((nelx * nely) as f64)
+            );
+            // Print
+            for ey in 0..nely {
+                for ex in 0..nelx {
+                    if x[(ey, ex)] > 0.75 {
+                        print!("██");
+                    } else if x[(ey, ex)] > 0.5 {
+                        print!("▒▒");
+                    } else if x[(ey, ex)] >= 0.25 {
+                        print!("░░");
+                    } else if x[(ey, ex)].is_nan() {
+                        print!("OO");
+                    } else {
+                        print!("  ");
+                    }
                 }
+                print!("\n");
             }
-            print!("\n");
         }
     }
     x
