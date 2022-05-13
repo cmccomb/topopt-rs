@@ -8,6 +8,7 @@ use nalgebra::{DMatrix, DVector};
 use nalgebra_sparse::{csc::CscMatrix, factorization::CscCholesky};
 mod utils;
 use utils::{max, min};
+// pub mod cookbook;
 
 /// The topology optimization solver.
 ///
@@ -34,7 +35,7 @@ pub(crate) fn top(
 ) -> DMatrix<f64> {
     // INITIALIZE
     let mut x: DMatrix<f64> = DMatrix::from_element(nely, nelx, volfrac);
-    let mut xold: DMatrix<f64> = DMatrix::from_element(nely, nelx, volfrac);
+    let mut xold: DMatrix<f64> ;
     let mut dc: DMatrix<f64> = DMatrix::from_element(nely, nelx, 1.0);
     let mut iter: usize = 0;
     let mut change: f64 = 1.0;
@@ -585,6 +586,7 @@ impl Settings {
 ///     .with_bottom_left_bc(false, true);
 /// ```
 impl Settings {
+    /// Apply a boundary condition to the left side of the domain. The arguments define whether or not the nodes are fixed in the _x_ and _y_ directions.
     pub fn with_left_bc(&mut self, x: bool, y: bool) -> Self {
         for idx in 0..=self.nelx {
             for jdx in 0..=self.nely {
@@ -596,6 +598,7 @@ impl Settings {
         self.clone()
     }
 
+    /// Apply a boundary condition to the right side of the domain. The arguments define whether or not the nodes are fixed in the _x_ and _y_ directions.
     pub fn with_right_bc(&mut self, x: bool, y: bool) -> Self {
         for idx in 0..=self.nelx {
             for jdx in 0..=self.nely {
@@ -607,6 +610,7 @@ impl Settings {
         self.clone()
     }
 
+    /// Apply a boundary condition to the top side of the domain. The arguments define whether or not the nodes are fixed in the _x_ and _y_ directions.
     pub fn with_top_bc(&mut self, x: bool, y: bool) -> Self {
         for idx in 0..=self.nelx {
             for jdx in 0..=self.nely {
@@ -618,6 +622,7 @@ impl Settings {
         self.clone()
     }
 
+    /// Apply a boundary condition to the bottom side of the domain. The arguments define whether or not the nodes are fixed in the _x_ and _y_ directions.
     pub fn with_bottom_bc(&mut self, x: bool, y: bool) -> Self {
         for idx in 0..=self.nelx {
             for jdx in 0..=self.nely {
@@ -629,6 +634,7 @@ impl Settings {
         self.clone()
     }
 
+    /// Apply a boundary condition to the vertical midline of the domain. The arguments define whether or not the nodes are fixed in the _x_ and _y_ directions.
     pub fn with_vertical_midline_bc(&mut self, x: bool, y: bool) -> Self {
         for idx in 0..=self.nelx {
             for jdx in 0..=self.nely {
@@ -640,6 +646,7 @@ impl Settings {
         self.clone()
     }
 
+    /// Apply a boundary condition to the horizontal midline of the domain. The arguments define whether or not the nodes are fixed in the _x_ and _y_ directions.
     pub fn with_horizontal_midline_bc(&mut self, x: bool, y: bool) -> Self {
         for idx in 0..=self.nelx {
             for jdx in 0..=self.nely {
@@ -651,21 +658,25 @@ impl Settings {
         self.clone()
     }
 
+    /// Apply a boundary condition to the bottom right corner of the domain. The arguments define whether or not the node is fixed in the _x_ and _y_ directions.
     pub fn with_bottom_right_bc(&mut self, x: bool, y: bool) -> Self {
         self.boundary[(self.nelx, self.nely)] = (x, y);
         self.clone()
     }
 
+    /// Apply a boundary condition to the bottom left corner of the domain. The arguments define whether or not the node is fixed in the _x_ and _y_ directions.
     pub fn with_bottom_left_bc(&mut self, x: bool, y: bool) -> Self {
         self.boundary[(0, self.nely)] = (x, y);
         self.clone()
     }
 
+    /// Apply a boundary condition to the top right corner of the domain. The arguments define whether or not the node is fixed in the _x_ and _y_ directions.
     pub fn with_top_right_bc(&mut self, x: bool, y: bool) -> Self {
         self.boundary[(self.nelx, 0)] = (x, y);
         self.clone()
     }
 
+    /// Apply a boundary condition to the top left corner of the domain. The arguments define whether or not the node is fixed in the _x_ and _y_ directions.
     pub fn with_top_left_bc(&mut self, x: bool, y: bool) -> Self {
         self.boundary[(0, 0)] = (x, y);
         self.clone()
@@ -678,7 +689,7 @@ impl Settings {
         self.clone()
     }
 
-    /// Set the boundary condition at a specific node. The argument define the indices of the node to be loaded, and the loads in the _x_ and _y_ directions.
+    /// Set the boundary condition at a specific node. The arguments define the indices of the node to be loaded, and whether or not the node is fixed in the _x_ and _y_ directions.
     pub fn set_bc(&mut self, idx: usize, jdx: usize, x: bool, y: bool) -> Self {
         self.boundary[(idx, jdx)] = (x, y);
         self.clone()
@@ -755,7 +766,7 @@ impl Settings {
         self.clone()
     }
 
-    /// Set a load of a specific node. The argument define the indices of the node to be loaded, and the loads in the _x_ and _y_ directions.
+    /// Set a load of a specific node. The arguments define the indices of the node to be loaded, and the loads in the _x_ and _y_ directions.
     pub fn set_load(&mut self, idx: usize, jdx: usize, x: bool, y: bool) -> Self {
         self.boundary[(idx, jdx)] = (x, y);
         self.clone()
