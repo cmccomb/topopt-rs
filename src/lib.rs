@@ -8,7 +8,7 @@ use nalgebra::{DMatrix, DVector};
 use nalgebra_sparse::{csc::CscMatrix, factorization::CscCholesky};
 mod utils;
 use utils::{max, min};
-// pub mod cookbook;
+pub mod cookbook;
 
 /// The topology optimization solver.
 ///

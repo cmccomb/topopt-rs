@@ -6,7 +6,7 @@
 This package performs 2-dimensional topology optimization and is a port of ["A 99 line topology optimization code written in Matlab"](https://www.topopt.mek.dtu.dk/apps-and-software/a-99-line-topology-optimization-code-written-in-matlab).
 
 # Basic Usage
-Running the solve function with default settings will find a solution to teh Messerschmitt–Bölkow–Blohm simply supported beam (enforcing symmetry).
+Running the solve function with default settings will find a solution to the Messerschmitt–Bölkow–Blohm simply supported beam (enforcing symmetry).
 ```rust
 topopt::solve(topopt::Settings::default());
 ```
