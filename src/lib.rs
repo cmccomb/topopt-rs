@@ -32,9 +32,13 @@ pub(crate) fn top(
     boundary: Option<DMatrix<(bool, bool)>>,
     passive: Option<DMatrix<bool>>,
     active: Option<DMatrix<bool>>,
+    x_init: Option<DMatrix<f64>>,
 ) -> DMatrix<f64> {
     // INITIALIZE
-    let mut x: DMatrix<f64> = DMatrix::from_element(nely, nelx, volfrac);
+    let mut x: DMatrix<f64> = match x_init {
+        Some(matrix) => matrix.clone(),
+        None => DMatrix::from_element(nely, nelx, volfrac),
+    };
     let mut xold: DMatrix<f64>;
     let mut dc: DMatrix<f64> = DMatrix::from_element(nely, nelx, 1.0);
     let mut iter: usize = 0;
@@ -119,6 +123,7 @@ pub fn solve(settings: Settings) -> DMatrix<f64> {
         Some(settings.boundary),
         Some(settings.passive),
         Some(settings.active),
+        Some(settings.x_init),
     )
 }
 
@@ -128,7 +133,7 @@ mod top_tests {
 
     #[test]
     fn test_top() {
-        let sol = crate::top(2, 2, 0.5, 3.0, 1.5, None, None, None, None);
+        let sol = crate::top(2, 2, 0.5, 3.0, 1.5, None, None, None, None, None);
         assert!(
             (sol - DMatrix::from_fn(2, 2, |idx, jdx| {
                 let x = [[0.5517, 0.3960], [0.5213, 0.5310]];
@@ -375,7 +380,9 @@ pub(crate) fn finite_element(
 
     // Solve matrix
     let K_sparse = CscMatrix::from(&K);
-    let mut U_as_matrix = CscCholesky::factor(&K_sparse).unwrap().solve(&F);
+    let mut U_as_matrix = CscCholesky::factor(&K_sparse)
+        .expect("Cannot factor the matrix")
+        .solve(&F);
     let mut U: DVector<f64> =
         DVector::from_fn(U_as_matrix.shape().0, |idx, jdx| U_as_matrix[(idx, 0)]);
 
@@ -487,6 +494,7 @@ pub struct Settings {
     boundary: DMatrix<(bool, bool)>,
     passive: DMatrix<bool>,
     active: DMatrix<bool>,
+    x_init: DMatrix<f64>,
 }
 
 impl Default for Settings {
@@ -519,6 +527,7 @@ impl Default for Settings {
             }),
             passive: DMatrix::from_element(20, 60, false),
             active: DMatrix::from_element(20, 60, false),
+            x_init: DMatrix::from_element(20, 60, 0.5),
         }
     }
 }
@@ -540,6 +549,7 @@ impl Settings {
             boundary: DMatrix::from_element(nelx + 1, nely + 1, (false, false)),
             passive: DMatrix::from_element(nely, nelx, false),
             active: DMatrix::from_element(nely, nelx, false),
+            x_init: DMatrix::from_element(nely, nelx, volume_fraction),
         }
     }
 
@@ -577,6 +587,12 @@ impl Settings {
     pub fn with_size(&mut self, nelx: usize, nely: usize) -> Self {
         self.nelx = nelx;
         self.nely = nely;
+        self.clone()
+    }
+
+    /// Specify the dimensions of the domain.
+    pub fn with_random_initialization(&mut self) -> Self {
+        self.x_init = DMatrix::new_random(self.nely, self.nelx) * self.volume_fraction * 2.0;
         self.clone()
     }
 }
