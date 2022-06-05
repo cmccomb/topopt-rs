@@ -786,7 +786,7 @@ impl Settings {
         self.clone()
     }
 
-    /// Set a load of a specific node. The arguments define the indices of the node to be loaded, and the loads in the _x_ and _y_ directions.
+    /// Set a load at a specific node. The arguments define the indices of the node to be loaded, and the loads in the _x_ and _y_ directions.
     pub fn set_load(&mut self, idx: usize, jdx: usize, x: bool, y: bool) -> Self {
         self.boundary[(idx, jdx)] = (x, y);
         self.clone()
