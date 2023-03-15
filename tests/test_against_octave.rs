@@ -126,7 +126,7 @@ fn mocktave_top(
 mod tests {
 
     #[test]
-    fn stupid_simple() {
+    fn silly_simple() {
         let settings = topopt::Settings::new(2, 2, 0.5)
             .with_left_bc(true, false)
             .with_bottom_right_bc(false, true)
@@ -139,7 +139,20 @@ mod tests {
     }
 
     #[test]
-    fn mbb() {
+    fn baby_beam() {
+        let settings = topopt::Settings::new(10, 10, 0.5)
+            .with_left_bc(true, false)
+            .with_bottom_right_bc(false, true)
+            .with_top_left_load(0.0, -1.0)
+            .with_penalty_weight(3.0)
+            .with_filter_radius(1.5);
+        let x = topopt::solve(settings);
+        let y = super::mocktave_top(2, 2, 0.5, 3.0, 1.5);
+        assert!((x - y).norm() < 1e-10)
+    }
+
+    #[test]
+    fn mbb_half_resolution() {
         let settings = topopt::Settings::new(30, 10, 0.5)
             .with_left_bc(true, false)
             .with_bottom_right_bc(false, true)
@@ -149,5 +162,18 @@ mod tests {
         let x = topopt::solve(settings);
         let y = super::mocktave_top(30, 10, 0.5, 3.0, 1.5);
         assert!((x - y).norm() < 1e-10)
+    }
+
+    #[test]
+    fn mbb_full() {
+        let settings = topopt::Settings::new(60, 20, 0.5)
+            .with_left_bc(true, false)
+            .with_bottom_right_bc(false, true)
+            .with_top_left_load(0.0, -1.0)
+            .with_penalty_weight(3.0)
+            .with_filter_radius(1.5);
+        let x = topopt::solve(settings);
+        let y = super::mocktave_top(60, 20, 0.5, 3.0, 1.5);
+        assert!((x - y).norm() < 1e-8)
     }
 }
