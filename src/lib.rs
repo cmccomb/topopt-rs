@@ -1,6 +1,5 @@
 #![warn(clippy::all)]
 #![warn(missing_docs)]
-#![warn(rustdoc::missing_doc_code_examples)]
 #![warn(clippy::missing_docs_in_private_items)]
 #![doc = include_str!("../README.md")]
 
@@ -125,25 +124,6 @@ pub fn solve(settings: Settings) -> DMatrix<f64> {
         Some(settings.active),
         Some(settings.x_init),
     )
-}
-
-#[cfg(test)]
-mod top_tests {
-    use nalgebra::DMatrix;
-
-    #[test]
-    fn test_top() {
-        let sol = crate::top(2, 2, 0.5, 3.0, 1.5, None, None, None, None, None);
-        assert!(
-            (sol - DMatrix::from_fn(2, 2, |idx, jdx| {
-                let x = [[0.5517, 0.3960], [0.5213, 0.5310]];
-                x[idx][jdx]
-            }))
-            .abs()
-            .max()
-                < 0.001
-        )
-    }
 }
 
 /// Optimality criteria update

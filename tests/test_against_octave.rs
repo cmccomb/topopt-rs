@@ -1,110 +1,155 @@
-use mocktave::eval;
-use nalgebra::DMatrix;
+use mocktave;
+use nalgebra;
 
-fn mocktave_top88(
+fn mocktave_top(
     nelx: usize,
     nely: usize,
     volfrac: f64,
     penalMax: f64,
     rmin: f64,
-) -> DMatrix<f64> {
-    // This code adapted from here: https://github.com/blademwang11/Topopt/blob/master/top88.m
+) -> nalgebra::DMatrix<f64> {
     let script = format!(
         "
-    function xPhys = top88(nelx,nely,volfrac,penalMax,rmin)
-        E0 = 1;
-        Emin = 1e-9;
-        nu = 0.3;
-        penal = 0.96;
-        A11 = [12  3 -6 -3;  3 12  3  0; -6  3 12 -3; -3  0 -3 12];
-        A12 = [-6 -3  0  3; -3 -6 -3 -6;  0 -3 -6  3;  3 -6  3 -6];
-        B11 = [-4  3 -2  9;  3 -4 -9  4; -2 -9 -4 -3;  9  4 -3 -4];
-        B12 = [ 2 -3  4 -9; -3  2  9 -2;  4  9  2  3; -9 -2  3  2];
-        KE = 1/(1-nu^2)/24*([A11 A12;A12' A11]+nu*[B11 B12;B12' B11]);
-        nodenrs = reshape(1:(1+nelx)*(1+nely),1+nely,1+nelx);
-        edofVec = reshape(2*nodenrs(1:end-1,1:end-1)+1,nelx*nely,1);
-        edofMat = repmat(edofVec,1,8)+repmat([0 1 2*nely+[2 3 0 1] -2 -1],nelx*nely,1);
-        iK = reshape(kron(edofMat,ones(8,1))',64*nelx*nely,1);
-        jK = reshape(kron(edofMat,ones(1,8))',64*nelx*nely,1);
-        F = sparse(2,1,-1,2*(nely+1)*(nelx+1),1);
-        U = zeros(2*(nely+1)*(nelx+1),1);
-        fixeddofs = union([1:2:2*(nely+1)],[2*(nelx+1)*(nely+1)]);
-        alldofs = [1:2*(nely+1)*(nelx+1)];
-        freedofs = setdiff(alldofs,fixeddofs);
-        iH = ones(nelx*nely*(2*(ceil(rmin)-1)+1)^2,1);
-        jH = ones(size(iH));
-        sH = zeros(size(iH));
-        k = 0;
-        for i1 = 1:nelx
-          for j1 = 1:nely
-            e1 = (i1-1)*nely+j1;
-            for i2 = max(i1-(ceil(rmin)-1),1):min(i1+(ceil(rmin)-1),nelx)
-              for j2 = max(j1-(ceil(rmin)-1),1):min(j1+(ceil(rmin)-1),nely)
-                e2 = (i2-1)*nely+j2;
-                k = k+1;
-                iH(k) = e1;
-                jH(k) = e2;
-                sH(k) = max(0,rmin-sqrt((i1-i2)^2+(j1-j2)^2));
-              endfor
-            endfor
-          endfor
-        endfor
-        H = sparse(iH,jH,sH);
-        Hs = sum(H,2);
-        x = repmat(volfrac,nely,nelx);
-        xPhys = x;
-        loop = 0;
-        change = 1;
-        while (change > 0.01)
-          loop = loop + 1;
-          penal = min(penalMax, penal + 0.04);
-          %% FE-ANALYSIS
-          sK = reshape(KE(:)*(Emin+xPhys(:)'.^penal*(E0-Emin)),64*nelx*nely,1);
-          K = sparse(iK,jK,sK); K = (K+K')/2;
-          tic; U(freedofs) = K(freedofs,freedofs)\\F(freedofs); toc;
-          ce = reshape(sum((U(edofMat)*KE).*U(edofMat),2),nely,nelx);
-          c = sum(sum((Emin+xPhys.^penal*(E0-Emin)).*ce));
-          dc = -penal*(E0-Emin)*xPhys.^(penal-1).*ce;
-          dv = ones(nely,nelx);
-          dc(:) = H*(dc(:)./Hs);
-          dv(:) = H*(dv(:)./Hs);
-          l1 = 0; l2 = 1e9; move = 0.2;
-          while ((l2-l1)/(l1+l2) > 1e-3)
-            lmid = 0.5*(l2+l1);
-            xnew = max(0,max(x-move,min(1,min(x+move,x.*sqrt(-dc./dv/lmid)))));
-            xPhys(:) = (H*xnew(:))./Hs;
-            if sum(xPhys(:)) > volfrac*nelx*nely, l1 = lmid; else l2 = lmid; endif
-          endwhile
-          change = max(abs(xnew(:)-x(:)));
-          x = xnew;
-        endwhile
-    endfunction
+        function x = top(nelx,nely,volfrac,penal,rmin);
+            % INITIALIZE
+            x(1:nely,1:nelx) = volfrac;
+            loop = 0;
+            change = 1.;
+            % START ITERATION
+            while change > 0.01
+              loop = loop + 1;
+              xold = x;
+            % FE-ANALYSIS
+              [U]=FE(nelx,nely,x,penal);
+            % OBJECTIVE FUNCTION AND SENSITIVITY ANALYSIS
+              [KE] = lk;
+              c = 0.;
+              for ely = 1:nely
+                for elx = 1:nelx
+                  n1 = (nely+1)*(elx-1)+ely;
+                  n2 = (nely+1)* elx   +ely;
+                  Ue = U([2*n1-1;2*n1; 2*n2-1;2*n2; 2*n2+1;2*n2+2; 2*n1+1;2*n1+2],1);
+                  c = c + x(ely,elx)^penal*Ue'*KE*Ue;
+                  dc(ely,elx) = -penal*x(ely,elx)^(penal-1)*Ue'*KE*Ue;
+                end
+              end
+            % FILTERING OF SENSITIVITIES
+              [dc]   = check(nelx,nely,rmin,x,dc);
+            % DESIGN UPDATE BY THE OPTIMALITY CRITERIA METHOD
+              [x]    = OC(nelx,nely,x,volfrac,dc);
+            % PRINT RESULTS
+              change = max(max(abs(x-xold)));
+              disp([' It.: ' sprintf('%4i',loop) ' Obj.: ' sprintf('%10.4f',c) ...
+                   ' Vol.: ' sprintf('%6.3f',sum(sum(x))/(nelx*nely)) ...
+                    ' ch.: ' sprintf('%6.3f',change )])
+            % PLOT DENSITIES
+              colormap(gray); imagesc(-x); axis equal; axis tight; axis off;pause(1e-6);
+            end
+            %%%%%%%%%% OPTIMALITY CRITERIA UPDATE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            function [xnew]=OC(nelx,nely,x,volfrac,dc)
+                l1 = 0; l2 = 100000; move = 0.2;
+                while (l2-l1 > 1e-4)
+                    lmid = 0.5*(l2+l1);
+                    xnew = max(0.001,max(x-move,min(1.,min(x+move,x.*sqrt(-dc./lmid)))));
+                    if sum(sum(xnew)) - volfrac*nelx*nely > 0;
+                        l1 = lmid;
+                    else
+                        l2 = lmid;
+                    end
+                end
+            end
+            %%%%%%%%%% MESH-INDEPENDENCY FILTER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            function [dcn]=check(nelx,nely,rmin,x,dc)
+                dcn=zeros(nely,nelx);
+                for i = 1:nelx
+                  for j = 1:nely
+                    ssum=0.0;
+                    for k = max(i-floor(rmin),1):min(i+floor(rmin),nelx)
+                      for l = max(j-floor(rmin),1):min(j+floor(rmin),nely)
+                        fac = rmin-sqrt((i-k)^2+(j-l)^2);
+                        ssum = ssum+max(0,fac);
+                        dcn(j,i) = dcn(j,i) + max(0,fac)*x(l,k)*dc(l,k);
+                      end
+                    end
+                    dcn(j,i) = dcn(j,i)/(x(j,i)*ssum);
+                  end
+                end
+            end
+            %%%%%%%%%% FE-ANALYSIS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            function [U]=FE(nelx,nely,x,penal)
+                [KE] = lk;
+                K = sparse(2*(nelx+1)*(nely+1), 2*(nelx+1)*(nely+1));
+                F = sparse(2*(nely+1)*(nelx+1),1); U = zeros(2*(nely+1)*(nelx+1),1);
+                for elx = 1:nelx
+                  for ely = 1:nely
+                    n1 = (nely+1)*(elx-1)+ely;
+                    n2 = (nely+1)* elx   +ely;
+                    edof = [2*n1-1; 2*n1; 2*n2-1; 2*n2; 2*n2+1; 2*n2+2; 2*n1+1; 2*n1+2];
+                    K(edof,edof) = K(edof,edof) + x(ely,elx)^penal*KE;
+                  end
+                end
+                % DEFINE LOADS AND SUPPORTS (HALF MBB-BEAM)
+                F(2,1) = -1;
+                fixeddofs   = union([1:2:2*(nely+1)],[2*(nelx+1)*(nely+1)]);
+                alldofs     = [1:2*(nely+1)*(nelx+1)];
+                freedofs    = setdiff(alldofs,fixeddofs);
+                % SOLVING
+                U(freedofs,:) = K(freedofs,freedofs) \\ F(freedofs,:);
+                U(fixeddofs,:)= 0;
+            end
+            %%%%%%%%%% ELEMENT STIFFNESS MATRIX %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            function [KE]=lk()
+                E = 1.;
+                nu = 0.3;
+                k=[ 1/2-nu/6   1/8+nu/8 -1/4-nu/12 -1/8+3*nu/8 ...
+                   -1/4+nu/12 -1/8-nu/8  nu/6       1/8-3*nu/8 ];
+                KE = E/(1-nu^2)*[ k(1) k(2) k(3) k(4) k(5) k(6) k(7) k(8)
+                                  k(2) k(1) k(8) k(7) k(6) k(5) k(4) k(3)
+                                  k(3) k(8) k(1) k(6) k(7) k(4) k(5) k(2)
+                                  k(4) k(7) k(6) k(1) k(8) k(3) k(2) k(5)
+                                  k(5) k(6) k(7) k(8) k(1) k(2) k(3) k(4)
+                                  k(6) k(5) k(4) k(3) k(2) k(1) k(8) k(7)
+                                  k(7) k(4) k(5) k(2) k(3) k(8) k(1) k(6)
+                                  k(8) k(3) k(2) k(5) k(4) k(7) k(6) k(1) ];
+            end
+        end
 
-    z = top88({nelx},{nely},{volfrac},{penalMax},{rmin});
+    z = top({nelx},{nely},{volfrac},{penalMax},{rmin});
 
     "
     );
 
-    let y = mocktave::eval(&script).get_matrix_named("z").expect("Wtf?");
+    let y = mocktave::eval(&script).get_matrix_named("z").unwrap();
 
-    DMatrix::from_fn(nelx, nely, |i, j| y[i][j])
+    nalgebra::DMatrix::from_fn(nely, nelx, |i, j| y[i][j])
 }
 
 #[cfg(test)]
 mod tests {
-    use core::assert_eq;
 
     #[test]
-    fn silly_simple() {
+    fn stupid_simple() {
+        let settings = topopt::Settings::new(2, 2, 0.5)
+            .with_left_bc(true, false)
+            .with_bottom_right_bc(false, true)
+            .with_top_left_load(0.0, -1.0)
+            .with_penalty_weight(3.0)
+            .with_filter_radius(1.5);
+        let x = topopt::solve(settings);
+        let y = super::mocktave_top(2, 2, 0.5, 3.0, 1.5);
+        assert!((x - y).norm() < 1e-10)
+    }
+
+    #[test]
+    fn mbb() {
         let settings = topopt::Settings::new(30, 10, 0.5)
             .with_left_bc(true, false)
             .with_bottom_right_bc(false, true)
             .with_top_left_load(0.0, -1.0)
             .with_penalty_weight(3.0)
             .with_filter_radius(1.5);
-
         let x = topopt::solve(settings);
-        // let y = super::mocktave_top88(30, 10, 0.5, 3.0, 1.5);
-        // assert_eq!(x, y)
+        let y = super::mocktave_top(30, 10, 0.5, 3.0, 1.5);
+        assert!((x - y).norm() < 1e-10)
     }
 }
