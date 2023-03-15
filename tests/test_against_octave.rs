@@ -42,8 +42,6 @@ fn mocktave_top(
               disp([' It.: ' sprintf('%4i',loop) ' Obj.: ' sprintf('%10.4f',c) ...
                    ' Vol.: ' sprintf('%6.3f',sum(sum(x))/(nelx*nely)) ...
                     ' ch.: ' sprintf('%6.3f',change )])
-            % PLOT DENSITIES
-              colormap(gray); imagesc(-x); axis equal; axis tight; axis off;pause(1e-6);
             end
             %%%%%%%%%% OPTIMALITY CRITERIA UPDATE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             function [xnew]=OC(nelx,nely,x,volfrac,dc)
