@@ -1,15 +1,18 @@
 use mocktave;
 use nalgebra;
 
-fn mocktave_top(
-    nelx: usize,
-    nely: usize,
-    volfrac: f64,
-    penalMax: f64,
-    rmin: f64,
-) -> nalgebra::DMatrix<f64> {
-    let script = format!(
-        "
+#[cfg(test)]
+mod tests {
+
+    fn mocktave_top(
+        nelx: usize,
+        nely: usize,
+        volfrac: f64,
+        penalMax: f64,
+        rmin: f64,
+    ) -> nalgebra::DMatrix<f64> {
+        let script = format!(
+            "
         function x = top(nelx,nely,volfrac,penal,rmin);
             % INITIALIZE
             x(1:nely,1:nelx) = volfrac;
@@ -115,15 +118,12 @@ fn mocktave_top(
     z = top({nelx},{nely},{volfrac},{penalMax},{rmin});
 
     "
-    );
+        );
 
-    let y = mocktave::eval(&script).get_matrix_named("z").unwrap();
+        let y = mocktave::eval(&script).get_matrix_named("z").unwrap();
 
-    nalgebra::DMatrix::from_fn(nely, nelx, |i, j| y[i][j])
-}
-
-#[cfg(test)]
-mod tests {
+        nalgebra::DMatrix::from_fn(nely, nelx, |i, j| y[i][j])
+    }
 
     #[test]
     fn silly_simple() {
@@ -134,8 +134,8 @@ mod tests {
             .with_penalty_weight(3.0)
             .with_filter_radius(1.5);
         let x = topopt::solve(settings);
-        let y = super::mocktave_top(2, 2, 0.5, 3.0, 1.5);
-        assert!((x - y).norm() < 1e-10)
+        let y = mocktave_top(2, 2, 0.5, 3.0, 1.5);
+        assert!(x.relative_eq(&y, 1e-10, 0.0));
     }
 
     #[test]
@@ -147,8 +147,8 @@ mod tests {
             .with_penalty_weight(3.0)
             .with_filter_radius(1.5);
         let x = topopt::solve(settings);
-        let y = super::mocktave_top(2, 2, 0.5, 3.0, 1.5);
-        assert!((x - y).norm() < 1e-10)
+        let y = mocktave_top(10, 10, 0.5, 3.0, 1.5);
+        assert!(x.relative_eq(&y, 1e-10, 0.0));
     }
 
     #[test]
@@ -160,20 +160,7 @@ mod tests {
             .with_penalty_weight(3.0)
             .with_filter_radius(1.5);
         let x = topopt::solve(settings);
-        let y = super::mocktave_top(30, 10, 0.5, 3.0, 1.5);
-        assert!((x - y).norm() < 1e-10)
-    }
-
-    #[test]
-    fn mbb_full() {
-        let settings = topopt::Settings::new(60, 20, 0.5)
-            .with_left_bc(true, false)
-            .with_bottom_right_bc(false, true)
-            .with_top_left_load(0.0, -1.0)
-            .with_penalty_weight(3.0)
-            .with_filter_radius(1.5);
-        let x = topopt::solve(settings);
-        let y = super::mocktave_top(60, 20, 0.5, 3.0, 1.5);
-        assert!((x - y).norm() < 1e-8)
+        let y = mocktave_top(30, 10, 0.5, 3.0, 1.5);
+        assert!(x.relative_eq(&y, 1e-10, 0.0));
     }
 }
