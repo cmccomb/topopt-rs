@@ -20,6 +20,7 @@ tui = []
 [dependencies]
 nalgebra = {version = "0.32.2", features=["rand"]}
 nalgebra-sparse = "0.9.0"
+mocktave = "0.1.2"
 
 [dev-dependencies]
-mocktave = "0.1.1"
+mocktave = "0.1.2"
