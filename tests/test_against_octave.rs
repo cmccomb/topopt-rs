@@ -147,7 +147,7 @@ mod tests {
             .with_penalty_weight(3.0)
             .with_filter_radius(1.5);
         let x = topopt::solve(settings);
-        let y = super::mocktave_top(2, 2, 0.5, 3.0, 1.5);
+        let y = super::mocktave_top(10, 10, 0.5, 3.0, 1.5);
         assert!((x - y).norm() < 1e-10)
     }
 

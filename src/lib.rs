@@ -24,9 +24,9 @@ pub mod cookbook;
 pub(crate) fn top(
     nelx: usize,
     nely: usize,
-    volfrac: f64,
+    volume_fraction: f64,
     penalty: f64,
-    rmin: f64,
+    r_min: f64,
     loads: Option<DMatrix<(f64, f64)>>,
     boundary: Option<DMatrix<(bool, bool)>>,
     passive: Option<DMatrix<bool>>,
@@ -36,7 +36,7 @@ pub(crate) fn top(
     // INITIALIZE
     let mut x: DMatrix<f64> = match x_init {
         Some(matrix) => matrix.clone(),
-        None => DMatrix::from_element(nely, nelx, volfrac),
+        None => DMatrix::from_element(nely, nelx, volume_fraction),
     };
     let mut xold: DMatrix<f64>;
     let mut dc: DMatrix<f64> = DMatrix::from_element(nely, nelx, 1.0);
@@ -47,14 +47,14 @@ pub(crate) fn top(
         iter += 1;
         xold = x.clone();
         // FE-ANALYSIS
-        let U = finite_element(nelx, nely, &x, penalty, &loads, &boundary);
+        let u = finite_element(nelx, nely, &x, penalty, &loads, &boundary);
 
         let mut c = 0.0;
         for ely in 1..=nely {
             for elx in 1..=nelx {
                 let n1 = (nely + 1) * (elx - 1) + ely;
                 let n2 = (nely + 1) * elx + ely;
-                let Ueidx = [
+                let ueidx = [
                     2 * n1 - 1,
                     2 * n1,
                     2 * n2 - 1,
@@ -64,19 +64,19 @@ pub(crate) fn top(
                     2 * n1 + 1,
                     2 * n1 + 2,
                 ];
-                let Ue: DVector<f64> = DVector::from_fn(8, |idx, _jdx| U[Ueidx[idx] - 1]);
-                let UKEU = (Ue.transpose() * lk() * Ue)[(0, 0)];
-                c += x[(ely - 1, elx - 1)].powf(penalty) * UKEU;
+                let ue: DVector<f64> = DVector::from_fn(8, |idx, _jdx| u[ueidx[idx] - 1]);
+                let ukeu = (ue.transpose() * lk() * ue)[(0, 0)];
+                c += x[(ely - 1, elx - 1)].powf(penalty) * ukeu;
                 dc[(ely - 1, elx - 1)] =
-                    -penalty * x[(ely - 1, elx - 1)].powf(penalty - 1.0) * UKEU;
+                    -penalty * x[(ely - 1, elx - 1)].powf(penalty - 1.0) * ukeu;
             }
         }
 
         // FILTERING OF SENSITIVITIES
-        dc = check(nelx, nely, rmin, &x, &dc);
+        dc = check(nelx, nely, r_min, &x, &dc);
 
         // % Design update by the optimality criteria method
-        x = optimality_criteria_update(nelx, nely, &x, volfrac, &dc, &active, &passive);
+        x = optimality_criteria_update(nelx, nely, &x, volume_fraction, &dc, &active, &passive);
 
         // % PRINT RESULTS
         change = (&x - xold).abs().max();
@@ -281,8 +281,8 @@ pub(crate) fn finite_element(
     loads: &Option<DMatrix<(f64, f64)>>,
     boundary: &Option<DMatrix<(bool, bool)>>,
 ) -> DVector<f64> {
-    let KE = lk();
-    let mut K: DMatrix<f64> = DMatrix::from_element(
+    let ke = lk();
+    let mut k: DMatrix<f64> = DMatrix::from_element(
         2 * (nelx + 1) * (nely + 1),
         2 * (nelx + 1) * (nely + 1),
         0.0,
@@ -303,23 +303,23 @@ pub(crate) fn finite_element(
             ];
             for (i, xidx) in edof.iter().enumerate() {
                 for (j, yidx) in edof.iter().enumerate() {
-                    K[(*xidx - 1, *yidx - 1)] += x[(ely - 1, elx - 1)].powf(penalty) * KE[(i, j)]
+                    k[(*xidx - 1, *yidx - 1)] += x[(ely - 1, elx - 1)].powf(penalty) * ke[(i, j)]
                 }
             }
         }
     }
     // DEFINE LOADS AND SUPPORTS (HALF MBB-BEAM)
-    let mut F: DVector<f64> = DVector::from_element(2 * (nely + 1) * (nelx + 1), 0.0);
+    let mut f: DVector<f64> = DVector::from_element(2 * (nely + 1) * (nelx + 1), 0.0);
     match loads {
         None => {
-            F[1] = -1.0;
+            f[1] = -1.0;
         }
         Some(load_matrix) => {
             let mut counter: usize = 0;
             for idx in 0..nelx {
                 for jdx in 0..nely {
-                    F[counter] = load_matrix[(idx, jdx)].0;
-                    F[counter + 1] = load_matrix[(idx, jdx)].1;
+                    f[counter] = load_matrix[(idx, jdx)].0;
+                    f[counter + 1] = load_matrix[(idx, jdx)].1;
                     counter += 2;
                 }
             }
@@ -353,25 +353,25 @@ pub(crate) fn finite_element(
 
     // Do magic
     for idx in fixeddofs.to_owned() {
-        F = F.remove_row(idx - 1);
-        K = K.remove_column(idx - 1);
-        K = K.remove_row(idx - 1);
+        f = f.remove_row(idx - 1);
+        k = k.remove_column(idx - 1);
+        k = k.remove_row(idx - 1);
     }
 
     // Solve matrix
-    let K_sparse = CscMatrix::from(&K);
-    let mut U_as_matrix = CscCholesky::factor(&K_sparse)
+    let k_sparse = CscMatrix::from(&k);
+    let mut u_as_matrix = CscCholesky::factor(&k_sparse)
         .expect("Cannot factor the matrix")
-        .solve(&F);
-    let mut U: DVector<f64> =
-        DVector::from_fn(U_as_matrix.shape().0, |idx, jdx| U_as_matrix[(idx, 0)]);
+        .solve(&f);
+    let mut u: DVector<f64> =
+        DVector::from_fn(u_as_matrix.shape().0, |idx, jdx| u_as_matrix[(idx, 0)]);
 
     // Undo magic
     fixeddofs.reverse();
     for idx in fixeddofs.to_owned() {
-        U = U.insert_row(idx - 1, 0.0);
+        u = u.insert_row(idx - 1, 0.0);
     }
-    U
+    u
 }
 
 #[cfg(test)]
