@@ -1,6 +1,6 @@
 [package]
 name = "topopt"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 authors = ["Chris McComb <ccmcc2012@gmail.com>"]
 description = "Topology optimization in pure Rust, based on 99 lines of MATLAB"
