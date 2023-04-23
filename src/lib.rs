@@ -8,16 +8,17 @@ use nalgebra_sparse::{csc::CscMatrix, factorization::CscCholesky};
 mod utils;
 use utils::{max, min};
 pub mod cookbook;
-pub mod mocktave;
+#[cfg(test)]
+mod mocktave;
 
 /// The topology optimization solver.
 ///
 /// It takes the following inputs
 /// - `nelx`, the number of elements in the *x* direction
 /// - `nely`, the number of elements in the *x* direction
-/// - `volfrac`, the volume fraction of material to be optimized for
+/// - `volume_fraction`, the volume fraction of material to be optimized for
 /// - `penalty` the penalty weight
-/// - `rmin`, the filter radius
+/// - `r_min`, the filter radius
 /// - `loads`, an optional `nelx+1`-by-`nely+1` matrix of `f64` tuples indicating the load applied to each node in *x*/*y* pairs.
 /// - `boundary`, an optional `nelx+1`-by-`nely+1` matrix of `bool` tuples indicating the degrees of freedom of each node in *x*/*y* pairs
 /// - `passive`, an optional `nelx`-by-`nely` matrix of `bool`s indicating elements which should be active (always void)
