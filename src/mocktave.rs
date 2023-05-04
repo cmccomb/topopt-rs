@@ -32,12 +32,12 @@ pub fn mocktave_finite_element(
             U(fixeddofs,:)= 0;
         end
 
-        
+        z = FE({nelx}, {nely}, {x}, {penalty});
 
         "
     );
 
-    let y = mocktave::eval(&script).get_matrix_named("z").unwrap();
+    let y = mocktave::eval(&script).get_matrix("z").unwrap();
 
     nalgebra::DMatrix::from_fn(8, 8, |i, j| y[i][j])
 }
@@ -65,7 +65,7 @@ pub fn mocktave_lk() -> nalgebra::DMatrix<f64> {
         "
     );
 
-    let y = mocktave::eval(&script).get_matrix_named("z").unwrap();
+    let y = mocktave::eval(&script).get_matrix("z").unwrap();
 
     nalgebra::DMatrix::from_fn(8, 8, |i, j| y[i][j])
 }
@@ -186,7 +186,7 @@ pub fn mocktave_top(
     "
     );
 
-    let y = mocktave::eval(&script).get_matrix_named("z").unwrap();
+    let y = mocktave::eval(&script).get_matrix("z").unwrap();
 
     nalgebra::DMatrix::from_fn(nely, nelx, |i, j| y[i][j])
 }

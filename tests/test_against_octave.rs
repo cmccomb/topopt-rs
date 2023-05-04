@@ -117,7 +117,7 @@ fn mocktave_top(
     "
     );
 
-    let y = mocktave::eval(&script).get_matrix_named("z").unwrap();
+    let y = mocktave::eval(&script).get_matrix("z").unwrap();
 
     nalgebra::DMatrix::from_fn(nely, nelx, |i, j| y[i][j])
 }
