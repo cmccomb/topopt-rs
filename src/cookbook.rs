@@ -12,7 +12,7 @@
 //! beam supported by pin joints at either end with a load in the middle. This setup
 //! solves it without a symmetry constraint.
 //! ```rust
-#![doc = include_str!("../examples/mbb.rs")]
+#![doc = include_str!("../examples/mbb_without_reflection.rs")]
 //! ```
 //! # Active Elements
 //! This library also supports the addition of active elements, or elements that must always
