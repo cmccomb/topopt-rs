@@ -83,8 +83,6 @@ pub(crate) fn top(
         // % PRINT RESULTS
         change = (&x - xold).abs().max();
 
-        #[cfg(feature = "tui")]
-        {
             print!("{esc}c", esc = 27 as char);
             println!(
                 "Iter: {iter:04}\tObj: {c:4.3}\tVol: {vol:1.3}\tΔ: {change:1.3}",
@@ -108,7 +106,6 @@ pub(crate) fn top(
                 print!("\n");
             }
         }
-    }
     x
 }
 
