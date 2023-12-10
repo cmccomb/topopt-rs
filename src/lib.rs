@@ -153,7 +153,7 @@ pub(crate) fn optimality_criteria_update(
 
         // Handle active elements
         if let Some(m) = active {
-            xnew.zip_apply(m, |mut xel, ael| {
+            xnew.zip_apply(m, |xel, ael| {
                 if ael {
                     *xel = 1.0;
                 }
@@ -162,7 +162,7 @@ pub(crate) fn optimality_criteria_update(
 
         // Handle passive elements
         if let Some(m) = passive {
-            xnew.zip_apply(m, |mut xel, pel| {
+            xnew.zip_apply(m, |xel, pel| {
                 if pel {
                     *xel = 0.001;
                 }
@@ -359,11 +359,11 @@ pub(crate) fn finite_element(
 
     // Solve matrix
     let k_sparse = CscMatrix::from(&k);
-    let mut u_as_matrix = CscCholesky::factor(&k_sparse)
+    let u_as_matrix = CscCholesky::factor(&k_sparse)
         .expect("Cannot factor the matrix")
         .solve(&f);
     let mut u: DVector<f64> =
-        DVector::from_fn(u_as_matrix.shape().0, |idx, jdx| u_as_matrix[(idx, 0)]);
+        DVector::from_fn(u_as_matrix.shape().0, |idx, _jdx| u_as_matrix[(idx, 0)]);
 
     // Undo magic
     fixeddofs.reverse();
