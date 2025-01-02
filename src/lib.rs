@@ -5,6 +5,9 @@
 
 use nalgebra::{DMatrix, DVector};
 use nalgebra_sparse::{csc::CscMatrix, factorization::CscCholesky};
+use std::fs;
+use std::path::Path;
+use vtkio::model::*;
 mod utils;
 use utils::{max, min};
 pub mod cookbook;
@@ -45,6 +48,16 @@ pub(crate) fn top(
     let mut iter: usize = 0;
     let mut change: f64 = 1.0;
 
+    // prepare vtk-output
+    let vtk_ouput_dir = Path::new("vtk_output");
+    // remove and re-create folder to avoid leftover files
+    if fs::metadata(vtk_ouput_dir).is_ok() {
+        fs::remove_dir_all(vtk_ouput_dir).expect("could not delete vtk-output folder");
+    }
+    fs::create_dir_all(vtk_ouput_dir).expect("could not create vtk-output folder");
+
+    let mut frac: Vec<f64> = Vec::with_capacity(nelx * nely);
+
     while change > 0.01 {
         iter += 1;
         xold = x.clone();
@@ -83,29 +96,65 @@ pub(crate) fn top(
         // % PRINT RESULTS
         change = (&x - xold).abs().max();
 
-            print!("{esc}c", esc = 27 as char);
-            println!(
-                "Iter: {iter:04}\tObj: {c:4.3}\tVol: {vol:1.3}\tΔ: {change:1.3}",
-                vol = x.sum() / ((nelx * nely) as f64)
-            );
-            // Print
-            for ey in 0..nely {
-                for ex in 0..nelx {
-                    if x[(ey, ex)] > 0.75 {
-                        print!("██");
-                    } else if x[(ey, ex)] > 0.5 {
-                        print!("▒▒");
-                    } else if x[(ey, ex)] >= 0.25 {
-                        print!("░░");
-                    } else if x[(ey, ex)].is_nan() {
-                        print!("OO");
-                    } else {
-                        print!("  ");
-                    }
+        print!("{esc}c", esc = 27 as char);
+        println!(
+            "Iter: {iter:04}\tObj: {c:4.3}\tVol: {vol:1.3}\tΔ: {change:1.3}",
+            vol = x.sum() / ((nelx * nely) as f64)
+        );
+        // Print
+        frac.clear();
+        for ey in 0..nely {
+            for ex in 0..nelx {
+                frac.push(x[(ey, ex)]);
+                if x[(ey, ex)] > 0.75 {
+                    print!("██");
+                } else if x[(ey, ex)] > 0.5 {
+                    print!("▒▒");
+                } else if x[(ey, ex)] >= 0.25 {
+                    print!("░░");
+                } else if x[(ey, ex)].is_nan() {
+                    print!("OO");
+                } else {
+                    print!("  ");
                 }
-                print!("\n");
             }
+            print!("\n");
         }
+
+        // output results in vtk format
+        let points_x = nelx as u32 + 1;
+        let points_y = nely as u32 + 1;
+
+        let vtk_out = Vtk {
+            version: Version { major: 4, minor: 2 },
+            byte_order: ByteOrder::BigEndian,
+            title: String::from("vtk output"),
+            file_path: None,
+            data: DataSet::inline(RectilinearGridPiece {
+                extent: Extent::Dims([points_x, points_y, 1]),
+                coords: Coordinates {
+                    x: (0..points_x).collect(),
+                    y: (0..points_y).rev().collect(),
+                    z: vec![0_f32].into(),
+                },
+                data: Attributes {
+                    cell: vec![Attribute::Field {
+                        name: String::from("FieldData"),
+                        data_array: vec![FieldArray {
+                            name: String::from("Volume-fraction"),
+                            elem: 1,
+                            data: frac.iter().cloned().collect(),
+                        }],
+                    }],
+                    ..Default::default()
+                },
+            }),
+        };
+
+        vtk_out
+            .export_ascii(vtk_ouput_dir.join(format!("opt_iter_{}.vtk", iter)))
+            .expect("failed to save vtk file");
+    }
     x
 }
 

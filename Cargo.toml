@@ -16,6 +16,7 @@ exclude = ["mbb.gif"]
 [dependencies]
 nalgebra = {version = ">=0.33.0", features=["rand"]}
 nalgebra-sparse = ">=0.10.0"
+vtkio = {version = "0.6.3", default-features = false}
 
 [dev-dependencies]
 mocktave = "0.1.5"
