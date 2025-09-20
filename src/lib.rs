@@ -556,24 +556,17 @@ impl Settings {
 impl Settings {
     /// Apply a boundary condition to the left side of the domain. The arguments define whether or not the nodes are fixed in the _x_ and _y_ directions.
     pub fn with_left_bc(&mut self, x: bool, y: bool) -> Self {
-        for idx in 0..=self.nelx {
-            for jdx in 0..=self.nely {
-                if idx == 0 {
-                    self.boundary[(idx, jdx)] = (x, y);
-                }
-            }
+        for jdx in 0..=self.nely {
+            self.boundary[(0, jdx)] = (x, y);
         }
         self.clone()
     }
 
     /// Apply a boundary condition to the right side of the domain. The arguments define whether or not the nodes are fixed in the _x_ and _y_ directions.
     pub fn with_right_bc(&mut self, x: bool, y: bool) -> Self {
-        for idx in 0..=self.nelx {
-            for jdx in 0..=self.nely {
-                if idx == self.nelx + 1 {
-                    self.boundary[(idx, jdx)] = (x, y);
-                }
-            }
+        let rightmost_column = self.nelx;
+        for jdx in 0..=self.nely {
+            self.boundary[(rightmost_column, jdx)] = (x, y);
         }
         self.clone()
     }
@@ -581,11 +574,7 @@ impl Settings {
     /// Apply a boundary condition to the top side of the domain. The arguments define whether or not the nodes are fixed in the _x_ and _y_ directions.
     pub fn with_top_bc(&mut self, x: bool, y: bool) -> Self {
         for idx in 0..=self.nelx {
-            for jdx in 0..=self.nely {
-                if jdx == 0 {
-                    self.boundary[(idx, jdx)] = (x, y);
-                }
-            }
+            self.boundary[(idx, 0)] = (x, y);
         }
         self.clone()
     }
@@ -593,11 +582,7 @@ impl Settings {
     /// Apply a boundary condition to the bottom side of the domain. The arguments define whether or not the nodes are fixed in the _x_ and _y_ directions.
     pub fn with_bottom_bc(&mut self, x: bool, y: bool) -> Self {
         for idx in 0..=self.nelx {
-            for jdx in 0..=self.nely {
-                if jdx == self.nely {
-                    self.boundary[(idx, jdx)] = (x, y);
-                }
-            }
+            self.boundary[(idx, self.nely)] = (x, y);
         }
         self.clone()
     }
@@ -774,5 +759,21 @@ mod settings_tests {
         expected[offset + 1] = load.1;
 
         assert_eq!(assembled_loads, expected);
+    }
+
+    #[test]
+    fn right_bc_sets_rightmost_column() {
+        let mut settings = Settings::new(3, 2, 0.5);
+        let fixed_directions = (true, false);
+
+        settings.with_right_bc(fixed_directions.0, fixed_directions.1);
+
+        for jdx in 0..=settings.nely {
+            assert_eq!(settings.boundary[(settings.nelx, jdx)], fixed_directions);
+        }
+
+        for jdx in 0..=settings.nely {
+            assert_eq!(settings.boundary[(settings.nelx - 1, jdx)], (false, false));
+        }
     }
 }
