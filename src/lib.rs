@@ -272,6 +272,34 @@ mod check_tests {
 }
 
 /// FE Analysis
+fn assemble_load_vector(
+    nelx: usize,
+    nely: usize,
+    loads: &Option<DMatrix<(f64, f64)>>,
+) -> DVector<f64> {
+    let node_count = (nelx + 1) * (nely + 1);
+    let mut f: DVector<f64> = DVector::from_element(2 * node_count, 0.0);
+
+    match loads {
+        None => {
+            f[1] = -1.0;
+        }
+        Some(load_matrix) => {
+            for idx in 0..=nelx {
+                for jdx in 0..=nely {
+                    let (fx, fy) = load_matrix[(idx, jdx)];
+                    let node_index = idx * (nely + 1) + jdx;
+                    let dof_index = 2 * node_index;
+                    f[dof_index] = fx;
+                    f[dof_index + 1] = fy;
+                }
+            }
+        }
+    }
+
+    f
+}
+
 pub(crate) fn finite_element(
     nelx: usize,
     nely: usize,
@@ -308,22 +336,7 @@ pub(crate) fn finite_element(
         }
     }
     // DEFINE LOADS AND SUPPORTS (HALF MBB-BEAM)
-    let mut f: DVector<f64> = DVector::from_element(2 * (nely + 1) * (nelx + 1), 0.0);
-    match loads {
-        None => {
-            f[1] = -1.0;
-        }
-        Some(load_matrix) => {
-            let mut counter: usize = 0;
-            for idx in 0..nelx {
-                for jdx in 0..nely {
-                    f[counter] = load_matrix[(idx, jdx)].0;
-                    f[counter + 1] = load_matrix[(idx, jdx)].1;
-                    counter += 2;
-                }
-            }
-        }
-    }
+    let mut f = assemble_load_vector(nelx, nely, loads);
 
     let mut fixeddofs: Vec<usize> = vec![];
     match boundary {
@@ -377,6 +390,8 @@ pub(crate) fn finite_element(
 mod fe_tests {
     use nalgebra::{DMatrix, DVector};
 
+    use crate::Settings;
+
     #[test]
     fn test_finite_element() {
         let u_from_matlab: DVector<f64> = DVector::from_vec(vec![
@@ -390,6 +405,25 @@ mod fe_tests {
                 .max()
                 < 0.001
         );
+    }
+
+    #[test]
+    fn bottom_right_load_is_applied() {
+        let nelx = 2;
+        let nely = 2;
+        let mut settings = Settings::new(nelx, nely, 0.5);
+        let load = (1.5_f64, -3.0_f64);
+
+        settings.with_bottom_right_load(load.0, load.1);
+
+        let force_vector = super::assemble_load_vector(nelx, nely, &Some(settings.loads.clone()));
+        let bottom_right_node = nelx * (nely + 1) + nely;
+        let dof_index = 2 * bottom_right_node;
+
+        assert!(force_vector[dof_index].abs() > f64::EPSILON);
+        assert!(force_vector[dof_index + 1].abs() > f64::EPSILON);
+        assert!((force_vector[dof_index] - load.0).abs() <= f64::EPSILON);
+        assert!((force_vector[dof_index + 1] - load.1).abs() <= f64::EPSILON);
     }
 }
 
