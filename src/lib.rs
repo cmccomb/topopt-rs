@@ -8,7 +8,7 @@ use nalgebra_sparse::{csc::CscMatrix, factorization::CscCholesky};
 mod utils;
 use utils::{max, min};
 pub mod cookbook;
-#[cfg(test)]
+#[cfg(all(test, feature = "mocktave-tests"))]
 mod mocktave;
 
 /// The topology optimization solver.
@@ -422,10 +422,8 @@ pub(crate) fn lk() -> DMatrix<f64> {
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "mocktave-tests"))]
 mod lk_tests {
-    use nalgebra::DMatrix;
-
     #[test]
     fn test_lk() {
         assert!(crate::lk().relative_eq(&crate::mocktave::mocktave_lk(), 1e-10, 0.0))
@@ -754,6 +752,8 @@ mod settings_tests {
         let target_jdx = 1;
         let load = (3.5_f64, -4.25_f64);
 
+        settings.with_left_bc(true, false);
+        settings.with_bottom_right_bc(false, true);
         settings.set_load(target_idx, target_jdx, load.0, load.1);
 
         // Ensure the configuration remains solvable end-to-end.

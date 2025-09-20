@@ -1,3 +1,5 @@
+#![cfg(feature = "mocktave-tests")]
+
 use mocktave;
 use nalgebra;
 
