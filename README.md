@@ -7,7 +7,7 @@ This package performs 2-dimensional topology optimization and is a port of ["A 9
 
 # Basic Usage
 Running the solve function with default settings will find a solution to the Messerschmitt–Bölkow–Blohm simply supported beam (enforcing symmetry).
-```rust
+```rust,no_run
 topopt::solve(topopt::Settings::default());
 ```
 The progress of the algorithm and a visualization of the optimized structure will be displayed in the command line
@@ -15,7 +15,7 @@ The progress of the algorithm and a visualization of the optimized structure wil
 ![](https://raw.githubusercontent.com/cmccomb/topopt-rs/master/mbb.gif)
 
 Alternatively, we could set up with the same simulation explicitly:
-```rust
+```rust,no_run
 topopt::solve(
     topopt::Settings::new(60, 20, 0.5)
         .with_left_bc(true, false)

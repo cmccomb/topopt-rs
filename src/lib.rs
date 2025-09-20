@@ -8,7 +8,7 @@ use nalgebra_sparse::{csc::CscMatrix, factorization::CscCholesky};
 mod utils;
 use utils::{max, min};
 pub mod cookbook;
-#[cfg(test)]
+#[cfg(all(test, feature = "mocktave-tests"))]
 mod mocktave;
 
 /// The topology optimization solver.
@@ -83,29 +83,29 @@ pub(crate) fn top(
         // % PRINT RESULTS
         change = (&x - xold).abs().max();
 
-            print!("{esc}c", esc = 27 as char);
-            println!(
-                "Iter: {iter:04}\tObj: {c:4.3}\tVol: {vol:1.3}\tΔ: {change:1.3}",
-                vol = x.sum() / ((nelx * nely) as f64)
-            );
-            // Print
-            for ey in 0..nely {
-                for ex in 0..nelx {
-                    if x[(ey, ex)] > 0.75 {
-                        print!("██");
-                    } else if x[(ey, ex)] > 0.5 {
-                        print!("▒▒");
-                    } else if x[(ey, ex)] >= 0.25 {
-                        print!("░░");
-                    } else if x[(ey, ex)].is_nan() {
-                        print!("OO");
-                    } else {
-                        print!("  ");
-                    }
+        print!("{esc}c", esc = 27 as char);
+        println!(
+            "Iter: {iter:04}\tObj: {c:4.3}\tVol: {vol:1.3}\tΔ: {change:1.3}",
+            vol = x.sum() / ((nelx * nely) as f64)
+        );
+        // Print
+        for ey in 0..nely {
+            for ex in 0..nelx {
+                if x[(ey, ex)] > 0.75 {
+                    print!("██");
+                } else if x[(ey, ex)] > 0.5 {
+                    print!("▒▒");
+                } else if x[(ey, ex)] >= 0.25 {
+                    print!("░░");
+                } else if x[(ey, ex)].is_nan() {
+                    print!("OO");
+                } else {
+                    print!("  ");
                 }
-                print!("\n");
             }
+            print!("\n");
         }
+    }
     x
 }
 
@@ -422,10 +422,8 @@ pub(crate) fn lk() -> DMatrix<f64> {
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "mocktave-tests"))]
 mod lk_tests {
-    use nalgebra::DMatrix;
-
     #[test]
     fn test_lk() {
         assert!(crate::lk().relative_eq(&crate::mocktave::mocktave_lk(), 1e-10, 0.0))
@@ -737,8 +735,44 @@ impl Settings {
     }
 
     /// Set a load at a specific node. The arguments define the indices of the node to be loaded, and the loads in the _x_ and _y_ directions.
-    pub fn set_load(&mut self, idx: usize, jdx: usize, x: bool, y: bool) -> Self {
-        self.boundary[(idx, jdx)] = (x, y);
+    pub fn set_load(&mut self, idx: usize, jdx: usize, x: f64, y: f64) -> Self {
+        self.loads[(idx, jdx)] = (x, y);
         self.clone()
+    }
+}
+
+#[cfg(test)]
+mod settings_tests {
+    use super::*;
+
+    #[test]
+    fn set_load_updates_assembled_vector() {
+        let mut settings = Settings::new(2, 2, 0.5);
+        let target_idx = 1;
+        let target_jdx = 1;
+        let load = (3.5_f64, -4.25_f64);
+
+        settings.with_left_bc(true, false);
+        settings.with_bottom_right_bc(false, true);
+        settings.set_load(target_idx, target_jdx, load.0, load.1);
+
+        // Ensure the configuration remains solvable end-to-end.
+        let _ = crate::solve(settings.clone());
+
+        let mut assembled_loads: Vec<f64> = Vec::with_capacity(2 * settings.nelx * settings.nely);
+        for idx in 0..settings.nelx {
+            for jdx in 0..settings.nely {
+                let (fx, fy) = settings.loads[(idx, jdx)];
+                assembled_loads.push(fx);
+                assembled_loads.push(fy);
+            }
+        }
+
+        let mut expected = vec![0.0_f64; 2 * settings.nelx * settings.nely];
+        let offset = ((target_idx * settings.nely) + target_jdx) * 2;
+        expected[offset] = load.0;
+        expected[offset + 1] = load.1;
+
+        assert_eq!(assembled_loads, expected);
     }
 }
