@@ -10,7 +10,15 @@ Running the solve function with default settings will find a solution to the Mes
 ```rust
 topopt::solve(topopt::Settings::default());
 ```
-The progress of the algorithm and a visualization of the optimized structure will be displayed in the command line
+In an interactive terminal, each iteration redraws the density visualization and
+shows aligned `Iteration`, `Objective`, `Volume`, and `Change` values. Redrawing
+clears the display without resetting terminal settings. When stdout is redirected
+to a file or pipe, or `TERM=dumb`, output is one plain-text progress line per
+iteration, without a visualization or terminal control codes:
+
+```text
+Iteration:    1  Objective:    123.457  Volume: 0.500  Change: 0.123
+```
 
 ![](https://raw.githubusercontent.com/cmccomb/topopt-rs/master/mbb.gif)
 

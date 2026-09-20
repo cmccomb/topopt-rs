@@ -5,6 +5,7 @@
 
 use nalgebra::{DMatrix, DVector};
 use nalgebra_sparse::{csc::CscMatrix, factorization::CscCholesky};
+mod output;
 mod utils;
 use utils::{max, min};
 pub mod cookbook;
@@ -80,32 +81,10 @@ pub(crate) fn top(
         // % Design update by the optimality criteria method
         x = optimality_criteria_update(nelx, nely, &x, volume_fraction, &dc, &active, &passive);
 
-        // % PRINT RESULTS
+        // PRINT RESULTS
         change = (&x - xold).abs().max();
-
-            print!("{esc}c", esc = 27 as char);
-            println!(
-                "Iter: {iter:04}\tObj: {c:4.3}\tVol: {vol:1.3}\tΔ: {change:1.3}",
-                vol = x.sum() / ((nelx * nely) as f64)
-            );
-            // Print
-            for ey in 0..nely {
-                for ex in 0..nelx {
-                    if x[(ey, ex)] > 0.75 {
-                        print!("██");
-                    } else if x[(ey, ex)] > 0.5 {
-                        print!("▒▒");
-                    } else if x[(ey, ex)] >= 0.25 {
-                        print!("░░");
-                    } else if x[(ey, ex)].is_nan() {
-                        print!("OO");
-                    } else {
-                        print!("  ");
-                    }
-                }
-                print!("\n");
-            }
-        }
+        output::print_progress(iter, c, x.sum() / ((nelx * nely) as f64), change, &x);
+    }
     x
 }
 
@@ -517,18 +496,34 @@ impl Settings {
 
     /// Specify elements that must remain active (i.e., filled). The active element boolean mask
     /// must have shape `nely` &times; `nelx`.
+    ///
+    /// # Panics
+    /// Panics if `mask` does not have `nely` rows and `nelx` columns.
     pub fn with_active_elements(&mut self, mask: DMatrix<bool>) -> Self {
-        if self.active.shape() == (self.nely, self.nelx) {
-            self.active = mask;
-        } else {
-            panic!("The active element boolean mask must have shape (nely, nelx)")
-        }
+        assert!(
+            mask.shape() == (self.nely, self.nelx),
+            "The active element boolean mask must have shape (nely, nelx) = ({}, {}), got {:?}",
+            self.nely,
+            self.nelx,
+            mask.shape()
+        );
+        self.active = mask;
         self.clone()
     }
 
-    /// Specify elements that must remain passive (i.e., filled). The passive element boolean mask
+    /// Specify elements that must remain passive (i.e., void). The passive element boolean mask
     /// must have shape `nely` &times; `nelx`.
+    ///
+    /// # Panics
+    /// Panics if `mask` does not have `nely` rows and `nelx` columns.
     pub fn with_passive_elements(&mut self, mask: DMatrix<bool>) -> Self {
+        assert!(
+            mask.shape() == (self.nely, self.nelx),
+            "The passive element boolean mask must have shape (nely, nelx) = ({}, {}), got {:?}",
+            self.nely,
+            self.nelx,
+            mask.shape()
+        );
         self.passive = mask;
         self.clone()
     }
@@ -740,5 +735,81 @@ impl Settings {
     pub fn set_load(&mut self, idx: usize, jdx: usize, x: bool, y: bool) -> Self {
         self.boundary[(idx, jdx)] = (x, y);
         self.clone()
+    }
+}
+
+#[cfg(test)]
+mod element_mask_tests {
+    use super::*;
+    use std::panic::{catch_unwind, AssertUnwindSafe};
+
+    #[test]
+    fn accepts_rectangular_masks_and_preserves_element_positions() {
+        let mut settings = Settings::new(3, 2, 0.5);
+        let mut active = DMatrix::from_element(2, 3, false);
+        active[(1, 2)] = true;
+        let mut passive = DMatrix::from_element(2, 3, false);
+        passive[(0, 1)] = true;
+
+        let configured = settings
+            .with_active_elements(active.clone())
+            .with_passive_elements(passive.clone());
+
+        assert_eq!(settings.active, active);
+        assert_eq!(configured.active, active);
+        assert_eq!(configured.passive, passive);
+
+        let updated = optimality_criteria_update(
+            3,
+            2,
+            &DMatrix::from_element(2, 3, 0.5),
+            0.5,
+            &DMatrix::from_element(2, 3, -1.0),
+            &Some(configured.active),
+            &Some(configured.passive),
+        );
+        assert_eq!(updated.shape(), (2, 3));
+        assert_eq!(updated[(1, 2)], 1.0);
+        assert_eq!(updated[(0, 1)], 0.001);
+    }
+
+    #[test]
+    fn rejects_invalid_active_masks_before_mutating_settings() {
+        let mut settings = Settings::new(3, 2, 0.5);
+        let original = DMatrix::from_element(2, 3, true);
+        settings.with_active_elements(original.clone());
+
+        // Transposed, undersized, oversized, and empty matrices.
+        for shape in [(3, 2), (1, 3), (2, 4), (0, 3), (2, 0)] {
+            let result = catch_unwind(AssertUnwindSafe(|| {
+                settings.with_active_elements(DMatrix::from_element(shape.0, shape.1, false));
+            }));
+            let error = result.expect_err("invalid active mask should be rejected by the setter");
+            let message = error.downcast_ref::<String>().expect("panic message");
+            assert!(message.contains("active element boolean mask"));
+            assert!(message.contains("(nely, nelx) = (2, 3)"));
+            assert!(message.contains(&format!("got {shape:?}")));
+            assert_eq!(settings.active, original);
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_passive_masks_before_mutating_settings() {
+        let mut settings = Settings::new(3, 2, 0.5);
+        let original = DMatrix::from_element(2, 3, true);
+        let configured = settings.with_passive_elements(original.clone());
+        assert_eq!(configured.passive, original);
+
+        for shape in [(3, 2), (1, 3), (2, 4), (0, 3), (2, 0)] {
+            let result = catch_unwind(AssertUnwindSafe(|| {
+                settings.with_passive_elements(DMatrix::from_element(shape.0, shape.1, false));
+            }));
+            let error = result.expect_err("invalid passive mask should be rejected by the setter");
+            let message = error.downcast_ref::<String>().expect("panic message");
+            assert!(message.contains("passive element boolean mask"));
+            assert!(message.contains("(nely, nelx) = (2, 3)"));
+            assert!(message.contains(&format!("got {shape:?}")));
+            assert_eq!(settings.passive, original);
+        }
     }
 }
