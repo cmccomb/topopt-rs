@@ -2,21 +2,26 @@ name: test
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose --release
-    - name: Run tests
-      run: cargo test --verbose --release
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Install reference solver
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends octave
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Test Rust and Octave implementations
+        run: cargo test --all-features --release
+      - name: Package
+        run: cargo publish --dry-run

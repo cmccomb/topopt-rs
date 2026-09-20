@@ -1,6 +1,6 @@
 [package]
 name = "topopt"
-version = "0.1.6"
+version = "0.2.0"
 edition = "2021"
 authors = ["Chris McComb <ccmcc2012@gmail.com>"]
 description = "Topology optimization in pure Rust, based on 99 lines of MATLAB"
@@ -17,11 +17,8 @@ exclude = ["mbb.gif"]
 mocktave-tests = []
 
 [dependencies]
-nalgebra = { version = ">=0.33.0", features = ["rand"] }
-nalgebra-sparse = ">=0.10.0"
+nalgebra = { version = "0.35", features = ["rand"] }
+nalgebra-sparse = "0.12"
 
 [dev-dependencies]
-mocktave = "0.1.5"
-
-[patch.crates-io]
-mocktave = { path = "vendor/mocktave" }
+mocktave = { version = "0.1.6", default-features = false, features = ["native"] }
