@@ -2,8 +2,9 @@
 
 The crates.io `topopt 0.1.7` archive was published from a dirty working tree based
 on commit `74ba553`. Its VCS metadata identifies that base, not the full source.
-The recovered branch `codex/published-0.1.7`, commit
-`530ae3d`, records the actual published source without changing that historical API.
+The recovered commit `530ae3dadba2e9801800226e884548bb88087c6a` records the
+actual published source without changing that historical API. It is preserved
+in the reconciled history, so the temporary recovery branch is no longer needed.
 
 Archive: https://static.crates.io/crates/topopt/topopt-0.1.7.crate
 
